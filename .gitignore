@@ -1,1 +1,4 @@
 /target
+*.db
+*.db3
+*.env
