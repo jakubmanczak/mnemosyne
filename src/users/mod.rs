@@ -157,7 +157,7 @@ impl User {
     pub fn create_systemuser() -> Result<User, UserError> {
         let u = User {
             id: Uuid::nil(),
-            handle: UserHandle::new("Mnenosyne")?,
+            handle: UserHandle::new("Mnemosyne")?,
         };
         database::conn()?
             .prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
