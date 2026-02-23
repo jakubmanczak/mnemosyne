@@ -10,6 +10,10 @@ pub const COOKIE_NAME: &str = "mnemohash";
 pub trait UserAuthenticate {
     fn authenticate(headers: &HeaderMap) -> Result<Option<User>, AuthError>;
 }
+pub trait UserAuthRequired {
+    fn required(self) -> Result<User, AuthError>;
+}
+
 pub trait UserPasswordHashing {
     /// Returns the hashed password as a String
     fn hash_password(passw: &str) -> Result<String, argon2::password_hash::Error>;
@@ -21,6 +25,8 @@ pub trait UserPasswordHashing {
 pub enum AuthError {
     #[error("Invalid credentials")]
     InvalidCredentials,
+    #[error("Authentication required")]
+    AuthRequired,
     #[error("Session error: {0}")]
     SessionError(#[from] SessionError),
     #[error("User error: {0}")]

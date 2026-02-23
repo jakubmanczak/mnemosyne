@@ -1,3 +1,7 @@
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use chrono::{DateTime, Duration, Utc};
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
@@ -5,7 +9,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
-    database,
+    ISE_MSG, database,
     users::{User, auth},
 };
 
@@ -42,6 +46,19 @@ pub enum SessionError {
 impl From<rusqlite::Error> for SessionError {
     fn from(error: rusqlite::Error) -> Self {
         SessionError::DatabaseError(error.to_string())
+    }
+}
+impl IntoResponse for SessionError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::DatabaseError(e) => {
+                eprintln!("[ERROR] Database error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
+            }
+            Self::NoSessionWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NoSessionWithToken(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+        }
+        .into_response()
     }
 }
 

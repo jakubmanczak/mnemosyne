@@ -9,8 +9,11 @@ mod quotes;
 mod tags;
 mod users;
 
-// Mnemosyne, the mother of the nine muses
+/// Mnemosyne, the mother of the nine muses
 const DEFAULT_PORT: u16 = 0x9999; // 39321
+
+/// The string to be returned alongside HTTP 500
+const ISE_MSG: &str = "Internal server error";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

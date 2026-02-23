@@ -1,8 +1,13 @@
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
+    ISE_MSG,
     database::{self},
     users::{
         auth::{AuthError, UserPasswordHashing},
@@ -33,16 +38,6 @@ pub enum UserError {
     DatabaseError(String),
     #[error("Argon2 passhash error: {0}")]
     PassHashError(argon2::password_hash::Error),
-}
-impl From<rusqlite::Error> for UserError {
-    fn from(error: rusqlite::Error) -> Self {
-        UserError::DatabaseError(error.to_string())
-    }
-}
-impl From<argon2::password_hash::Error> for UserError {
-    fn from(err: argon2::password_hash::Error) -> Self {
-        UserError::PassHashError(err)
-    }
 }
 
 impl User {
@@ -174,5 +169,34 @@ impl User {
     /// It should not have its name changed, and should be protected from that.
     pub fn is_systemuser(&self) -> bool {
         self.id == Uuid::nil()
+    }
+}
+
+impl From<rusqlite::Error> for UserError {
+    fn from(error: rusqlite::Error) -> Self {
+        UserError::DatabaseError(error.to_string())
+    }
+}
+impl From<argon2::password_hash::Error> for UserError {
+    fn from(err: argon2::password_hash::Error) -> Self {
+        UserError::PassHashError(err)
+    }
+}
+impl IntoResponse for UserError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::DatabaseError(e) => {
+                eprintln!("[ERROR] Database error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
+            }
+            Self::PassHashError(e) => {
+                eprintln!("[ERROR] A passwordhash error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
+            }
+            Self::UserHandleError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NoUserWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NoUserWithHandle(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+        }
+        .into_response()
     }
 }

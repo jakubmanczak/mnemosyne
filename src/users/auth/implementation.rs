@@ -1,17 +1,23 @@
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString};
-use axum::http::{
-    HeaderMap,
-    header::{AUTHORIZATION, COOKIE},
+use axum::{
+    http::{
+        HeaderMap, StatusCode,
+        header::{AUTHORIZATION, COOKIE},
+    },
+    response::{IntoResponse, Response},
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
 use crate::{
-    database,
+    ISE_MSG, database,
     users::{
         User,
-        auth::{AuthError, COOKIE_NAME, TokenSize, UserAuthenticate, UserPasswordHashing},
+        auth::{
+            AuthError, COOKIE_NAME, TokenSize, UserAuthRequired, UserAuthenticate,
+            UserPasswordHashing,
+        },
         sessions::Session,
     },
 };
@@ -23,6 +29,37 @@ impl TokenSize {
             TokenSize::Char16 => 10,
             TokenSize::Char32 => 20,
             TokenSize::Char64 => 40,
+        }
+    }
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::InvalidCredentials => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::AuthRequired => (StatusCode::UNAUTHORIZED, self.to_string()).into_response(),
+            Self::SessionError(e) => e.into_response(),
+            Self::UserError(e) => e.into_response(),
+            Self::InvalidFormat => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::InvalidBase64(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::InvalidUtf8(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::DatabaseError(e) => {
+                eprintln!("[ERROR] Database error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
+            }
+            Self::PassHashError(e) => {
+                eprintln!("[ERROR] A passwordhash error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
+            }
+        }
+    }
+}
+
+impl UserAuthRequired for Option<User> {
+    fn required(self) -> Result<User, AuthError> {
+        match self {
+            Self::None => Err(AuthError::AuthRequired),
+            Self::Some(u) => Ok(u),
         }
     }
 }
