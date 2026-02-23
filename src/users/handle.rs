@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 #[serde(try_from = "String")]
 pub struct UserHandle(String);
 
-#[derive(Debug, thiserror::Error, Clone, PartialEq)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Serialize)]
 pub enum UserHandleError {
     #[error("Handle is too short - must be 3 or more characters.")]
     HandleTooShort,

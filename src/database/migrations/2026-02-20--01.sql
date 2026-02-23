@@ -6,13 +6,17 @@ CREATE TABLE users (
 );
 CREATE TABLE sessions (
     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
-    token       TEXT NOT NULL UNIQUE,
+    token       BLOB NOT NULL UNIQUE,
     user_id     BLOB NOT NULL REFERENCES users(id), -- UUIDv7 bytes (userID)
-    issued      TEXT NOT NULL, -- RFC3339 into DateTime<Utc>
     expiry      TEXT NOT NULL, -- RFC3339 into DateTime<Utc>
     revoked     INTEGER NOT NULL DEFAULT 0, -- bool (int 0 or int 1)
     revoked_at  TEXT DEFAULT NULL, -- RFC3339 into DateTime<Utc>
     revoked_by  BLOB DEFAULT NULL REFERENCES users(id)  -- UUIDv7 bytes (userID)
+
+    CHECK(
+        (revoked = 0 AND revoked_at IS NULL AND revoked_by IS NULL) OR
+        (revoked = 1 AND revoked_at IS NOT NULL AND revoked_by IS NOT NULL)
+    )
 );
 CREATE INDEX sessions_by_userid ON sessions(user_id);
 
