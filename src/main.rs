@@ -36,7 +36,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let r = api::api_router();
     let l = TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     println!("Listener bound to {}", l.local_addr()?);
-    let port = l.local_addr()?.port();
 
     axum::serve(l, r).await?;
     Ok(())

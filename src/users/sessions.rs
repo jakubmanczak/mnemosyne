@@ -104,6 +104,7 @@ impl Session {
             None => Err(SessionError::NoSessionWithToken(token.to_string())),
         }
     }
+    #[allow(unused)]
     pub fn new_for_user(user: &User) -> Result<(Session, String), SessionError> {
         let id = Uuid::now_v7();
         let token = auth::generate_token(auth::TokenSize::Char64);
@@ -139,6 +140,7 @@ impl Session {
         Ok(())
     }
 
+    #[allow(unused)]
     pub fn revoke(&mut self, actor: Option<&User>) -> Result<(), SessionError> {
         let now = Utc::now();
         let id = actor.map(|u| u.id).unwrap_or(Uuid::nil());
@@ -154,6 +156,7 @@ impl Session {
         Ok(())
     }
 
+    #[allow(unused)]
     pub fn issued(&self) -> DateTime<Utc> {
         // unwrapping here since we use UUIDv7
         // and since we assume we're not in 10k CE

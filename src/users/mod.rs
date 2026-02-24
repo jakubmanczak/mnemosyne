@@ -10,7 +10,7 @@ use crate::{
     ISE_MSG,
     database::{self},
     users::{
-        auth::{AuthError, UserPasswordHashing},
+        auth::UserPasswordHashing,
         handle::{UserHandle, UserHandleError},
     },
 };
@@ -122,6 +122,7 @@ impl User {
     /// to do everything and probably should not be used as a regular account
     /// due to the ramifications of compromise. But it could be used for that,
     /// and have its name changed.
+    #[allow(unused)]
     pub fn is_infradmin(&self) -> bool {
         self.id == Uuid::max()
     }
@@ -167,6 +168,7 @@ impl User {
     /// for actions performed by Mnemosyne internally.
     /// It shall not be available for log-in.
     /// It should not have its name changed, and should be protected from that.
+    #[allow(unused)]
     pub fn is_systemuser(&self) -> bool {
         self.id == Uuid::nil()
     }

@@ -4,18 +4,19 @@ use axum::{
     routing::get,
 };
 
-use crate::{
-    api::users::{get_by_id, get_me},
-    users::{UserError, auth::AuthError, sessions::SessionError},
-};
+use crate::users::{UserError, auth::AuthError, sessions::SessionError};
 
+mod sessions;
 mod users;
 
+// TODO: PERMISSIONS FOR ENDPOINTS & ACTIONS
 pub fn api_router() -> Router {
     Router::new()
         .route("/api/live", get(async || "Mnemosyne lives"))
-        .route("/api/users/me", get(get_me))
-        .route("/api/users/{id}", get(get_by_id))
+        .route("/api/users/me", get(users::get_me))
+        .route("/api/users/{id}", get(users::get_by_id))
+        .route("/api/users/@{handle}", get(users::get_by_handle))
+        .route("/api/sessions/{id}", get(sessions::get_by_id))
 }
 
 pub struct CompositeError(Response);
