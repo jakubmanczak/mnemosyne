@@ -58,11 +58,11 @@ impl User {
     }
     pub fn get_by_handle(handle: UserHandle) -> Result<User, UserError> {
         let res = database::conn()?
-            .prepare("SELECT id FROM users WHERE handle = ?1")?
+            .prepare("SELECT id, handle FROM users WHERE handle = ?1")?
             .query_one((&handle,), |r| {
                 Ok(User {
                     id: r.get(0)?,
-                    handle: handle.clone(),
+                    handle: r.get(1)?,
                 })
             })
             .optional()?;
