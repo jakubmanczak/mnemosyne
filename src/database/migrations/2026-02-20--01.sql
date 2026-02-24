@@ -1,6 +1,6 @@
 CREATE TABLE users (
     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
-    handle      TEXT NOT NULL UNIQUE,
+    handle      TEXT NOT NULL UNIQUE COLLATE NOCASE,
     password    TEXT, -- hashed, nullable in case of OAuth2-only login
     prof_pic    TEXT  -- link probably
 );

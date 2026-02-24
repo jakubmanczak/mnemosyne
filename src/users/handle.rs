@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Deref, str::FromStr};
+use std::{fmt::Display, hash::Hash, ops::Deref, str::FromStr};
 
 use rusqlite::{
     Result as RusqliteResult,
@@ -6,7 +6,7 @@ use rusqlite::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(into = "String")]
 #[serde(try_from = "String")]
 pub struct UserHandle(String);
@@ -42,6 +42,19 @@ impl UserHandle {
         &self.0
     }
 }
+
+impl PartialEq for UserHandle {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(&other.0)
+    }
+}
+impl Eq for UserHandle {}
+impl Hash for UserHandle {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_ascii_lowercase().hash(state);
+    }
+}
+
 impl AsRef<str> for UserHandle {
     fn as_ref(&self) -> &str {
         &self.0
