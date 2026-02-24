@@ -20,6 +20,10 @@ pub trait UserPasswordHashing {
     /// Returns whether the password matches the hash
     fn match_hash_password(passw: &str, hash: &str) -> Result<bool, argon2::password_hash::Error>;
 }
+pub trait UserAuthDummyData {
+    const DUMMY_PASSWORD_PHC: &str;
+    const DUMMY_PASSWORD: &str;
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum AuthError {

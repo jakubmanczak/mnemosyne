@@ -15,8 +15,8 @@ use crate::{
     users::{
         User,
         auth::{
-            AuthError, COOKIE_NAME, TokenSize, UserAuthRequired, UserAuthenticate,
-            UserPasswordHashing,
+            AuthError, COOKIE_NAME, TokenSize, UserAuthDummyData, UserAuthRequired,
+            UserAuthenticate, UserPasswordHashing,
         },
         sessions::Session,
     },
@@ -79,6 +79,15 @@ impl UserPasswordHashing for User {
         let hash = PasswordHash::try_from(hash)?;
         Ok(argon.verify_password(passw, &hash).is_ok())
     }
+}
+
+// TODO: generate these at startup using predefined Argon2 params if
+// these ever change from ::Default - the PHC must have the same factors as real hashes.
+impl UserAuthDummyData for User {
+    /// This PHC generated for b"password"
+    const DUMMY_PASSWORD_PHC: &str = "$argon2id$v=19$m=19456,t=2,p=1$PXcTKpFhLRB70fVF35XYDQ$QOW2IxdPUvqD38+ScqX5SgO+jwweaMO9DUGqmkTeofQ";
+    /// Different than the input password of the PHC
+    const DUMMY_PASSWORD: &str = "different_password";
 }
 
 impl From<argon2::password_hash::Error> for AuthError {
@@ -175,7 +184,10 @@ fn authenticate_basic(credentials: &str) -> Result<Option<User>, AuthError> {
             true => Ok(Some(User::get_by_id(id)?)),
             false => Err(AuthError::InvalidCredentials),
         },
-        _ => Err(AuthError::InvalidCredentials),
+        _ => {
+            let _ = User::match_hash_password(User::DUMMY_PASSWORD, User::DUMMY_PASSWORD_PHC)?;
+            Err(AuthError::InvalidCredentials)
+        }
     }
 }
 
