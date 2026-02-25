@@ -3,7 +3,7 @@ use rand08::{RngCore, rngs::OsRng};
 
 use crate::users::{User, UserError, sessions::SessionError};
 
-mod implementation;
+pub mod implementation;
 
 pub const COOKIE_NAME: &str = "mnemohash";
 

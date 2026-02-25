@@ -170,13 +170,19 @@ fn authenticate_basic(credentials: &str) -> Result<Option<User>, AuthError> {
     let decoded = BASE64_STANDARD.decode(credentials)?;
     let credentials_str = String::from_utf8(decoded)?;
 
-    let Some((username, password)) = credentials_str.split_once(':') else {
+    let Some((handle, password)) = credentials_str.split_once(':') else {
         return Err(AuthError::InvalidFormat);
     };
+    authenticate_via_credentials(handle, password)
+}
+pub fn authenticate_via_credentials(
+    handle: &str,
+    password: &str,
+) -> Result<Option<User>, AuthError> {
     let conn = database::conn()?;
     let user: Option<(Uuid, Option<String>)> = conn
         .prepare("SELECT id, password FROM users WHERE handle = ?1")?
-        .query_row([username], |r| Ok((r.get(0)?, r.get(1)?)))
+        .query_row([handle], |r| Ok((r.get(0)?, r.get(1)?)))
         .optional()?;
 
     match user {

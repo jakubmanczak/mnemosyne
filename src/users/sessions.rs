@@ -104,7 +104,6 @@ impl Session {
             None => Err(SessionError::NoSessionWithToken(token.to_string())),
         }
     }
-    #[allow(unused)]
     pub fn new_for_user(user: &User) -> Result<(Session, String), SessionError> {
         let id = Uuid::now_v7();
         let token = auth::generate_token(auth::TokenSize::Char64);
@@ -112,7 +111,7 @@ impl Session {
         let expiry = Utc::now() + Session::DEFAULT_PROLONGATION;
 
         database::conn()?
-            .prepare("INSERT INTO sessions VALUES (?1, ?2, ?3, ?4)")?
+            .prepare("INSERT INTO sessions(id, token, user_id, expiry) VALUES (?1, ?2, ?3, ?4)")?
             .execute((&id, &hashed, user.id, expiry))?;
         let s = Session {
             id,
@@ -123,7 +122,7 @@ impl Session {
         Ok((s, token))
     }
 
-    const DEFAULT_PROLONGATION: Duration = Duration::days(14);
+    pub const DEFAULT_PROLONGATION: Duration = Duration::days(14);
     const PROLONGATION_THRESHOLD: Duration = Duration::hours(2);
     pub fn prolong(&mut self) -> Result<(), SessionError> {
         if self.expiry - Session::DEFAULT_PROLONGATION + Session::PROLONGATION_THRESHOLD

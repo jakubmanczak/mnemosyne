@@ -1,7 +1,7 @@
 use axum::{
     Router,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
 };
 
 use crate::{
@@ -9,6 +9,7 @@ use crate::{
     users::{UserError, auth::AuthError, sessions::SessionError},
 };
 
+mod auth;
 mod sessions;
 mod tags;
 mod users;
@@ -17,6 +18,8 @@ mod users;
 pub fn api_router() -> Router {
     Router::new()
         .route("/api/live", get(async || "Mnemosyne lives"))
+        .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/logout", post(auth::logout))
         .route("/api/users/me", get(users::get_me))
         .route("/api/users/{id}", get(users::get_by_id))
         .route("/api/users/@{handle}", get(users::get_by_handle))
