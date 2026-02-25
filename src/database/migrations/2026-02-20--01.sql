@@ -68,7 +68,7 @@ CREATE UNIQUE INDEX lines_unique_ordering ON lines(quote_id, ordering);
 
 CREATE TABLE tags (
     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
-    tagname     TEXT NOT NULL UNIQUE
+    tagname     TEXT NOT NULL UNIQUE COLLATE NOCASE
 );
 
 CREATE TABLE user_quote_likes (

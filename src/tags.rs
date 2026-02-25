@@ -1,2 +1,230 @@
-#[allow(unused)]
-pub struct Tag;
+use std::{fmt::Display, hash::Hash, ops::Deref, str::FromStr};
+
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use rusqlite::{
+    OptionalExtension, Result as RusqliteResult, ToSql,
+    types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
+};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use crate::{ISE_MSG, database};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tag {
+    pub id: Uuid,
+    pub name: TagName,
+}
+
+impl Tag {
+    pub fn get_by_id(id: Uuid) -> Result<Tag, TagError> {
+        let res = database::conn()?
+            .prepare("SELECT tagname FROM tags WHERE id = ?1")?
+            .query_one((&id,), |r| {
+                Ok(Tag {
+                    id,
+                    name: r.get(0)?,
+                })
+            })
+            .optional()?;
+        match res {
+            Some(t) => Ok(t),
+            None => Err(TagError::NoTagWithId(id)),
+        }
+    }
+    pub fn get_by_name(name: TagName) -> Result<Tag, TagError> {
+        let res = database::conn()?
+            .prepare("SELECT id, tagname FROM tags WHERE tagname = ?1")?
+            .query_one((&name,), |r| {
+                Ok(Tag {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })
+            .optional()?;
+        match res {
+            Some(u) => Ok(u),
+            None => Err(TagError::NoTagWithName(name)),
+        }
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum TagError {
+    #[error("TagNameError: {0}")]
+    TagNameError(#[from] TagNameError),
+    #[error("No tag found with ID {0}")]
+    NoTagWithId(Uuid),
+    #[error("No tag found with name {0}")]
+    NoTagWithName(TagName),
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+}
+impl From<rusqlite::Error> for TagError {
+    fn from(error: rusqlite::Error) -> Self {
+        TagError::DatabaseError(error.to_string())
+    }
+}
+impl IntoResponse for TagError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::DatabaseError(e) => {
+                eprintln!("[ERROR] Database error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
+            }
+            Self::TagNameError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NoTagWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NoTagWithName(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+        }
+        .into_response()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(into = "String")]
+#[serde(try_from = "String")]
+pub struct TagName(String);
+
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Serialize)]
+pub enum TagNameError {
+    #[error("Tag is too short - must be 3 or more characters.")]
+    TagTooShort,
+    #[error("Tag is too long - must be 16 or less characters.")]
+    TagTooLong,
+    #[error("Tag must consist of ASCII alphanumerics or mid-tag dashes only.")]
+    TagNonDashAsciiAlphanumeric,
+    #[error("Tag must not have a leading or trailing dash.")]
+    TagLeadingTrailingDash,
+    #[error("Tag must not have consecutive dashes.")]
+    TagConsecutiveDashes,
+}
+
+impl TagName {
+    pub fn new(input: impl AsRef<str>) -> Result<Self, TagNameError> {
+        let s = input.as_ref();
+        TagName::validate_str(s)?;
+        Ok(TagName(s.to_string()))
+    }
+    pub fn validate_str(str: &str) -> Result<(), TagNameError> {
+        match str.len() {
+            ..=2 => return Err(TagNameError::TagTooShort),
+            17.. => return Err(TagNameError::TagTooLong),
+            _ => (),
+        };
+        if str.bytes().any(|c| !c.is_ascii_alphanumeric() && c != b'-') {
+            return Err(TagNameError::TagNonDashAsciiAlphanumeric);
+        }
+        if str.starts_with('-') || str.ends_with('-') {
+            return Err(TagNameError::TagLeadingTrailingDash);
+        }
+        if str
+            .as_bytes()
+            .windows(2)
+            .any(|w| w[0] == b'-' && w[1] == b'-')
+        {
+            return Err(TagNameError::TagConsecutiveDashes);
+        }
+        Ok(())
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl PartialEq for TagName {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq_ignore_ascii_case(&other.0)
+    }
+}
+impl Eq for TagName {}
+impl Hash for TagName {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.to_ascii_lowercase().hash(state);
+    }
+}
+
+impl AsRef<str> for TagName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+impl Deref for TagName {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl Display for TagName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl FromStr for TagName {
+    type Err = TagNameError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::validate_str(s)?;
+        Ok(TagName(s.to_string()))
+    }
+}
+impl TryFrom<String> for TagName {
+    type Error = TagNameError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::validate_str(&value)?;
+        Ok(TagName(value))
+    }
+}
+impl From<TagName> for String {
+    fn from(value: TagName) -> Self {
+        value.0
+    }
+}
+
+impl ToSql for TagName {
+    fn to_sql(&self) -> RusqliteResult<ToSqlOutput<'_>> {
+        Ok(self.0.to_sql()?)
+    }
+}
+
+impl FromSql for TagName {
+    fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+        TagName::from_str(value.as_str()?).map_err(|e| FromSqlError::Other(Box::new(e)))
+    }
+}
+
+#[test]
+#[should_panic]
+fn tagname_leading_dash_fail() {
+    TagName::new("-test").unwrap();
+}
+#[test]
+#[should_panic]
+fn tagname_trailing_dash_fail() {
+    TagName::new("test-").unwrap();
+}
+#[test]
+#[should_panic]
+fn tagname_consecutive_dash_fail() {
+    TagName::new("test1--test2").unwrap();
+}
+#[test]
+#[should_panic]
+fn tagname_short_fail() {
+    TagName::new("xd").unwrap();
+}
+#[test]
+#[should_panic]
+fn tagname_long_fail() {
+    TagName::new("xddddddddddddddddddddddddddd").unwrap();
+}
+#[test]
+#[should_panic]
+fn tagname_nondashasciialphanumerics_fail() {
+    TagName::new("hate_underscores").unwrap();
+}
+#[test]
+fn tagname_pass() {
+    TagName::new("H311-yeah").unwrap();
+}

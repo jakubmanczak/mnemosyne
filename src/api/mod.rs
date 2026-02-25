@@ -4,9 +4,13 @@ use axum::{
     routing::get,
 };
 
-use crate::users::{UserError, auth::AuthError, sessions::SessionError};
+use crate::{
+    tags::TagError,
+    users::{UserError, auth::AuthError, sessions::SessionError},
+};
 
 mod sessions;
+mod tags;
 mod users;
 
 // TODO: PERMISSIONS FOR ENDPOINTS & ACTIONS
@@ -17,6 +21,8 @@ pub fn api_router() -> Router {
         .route("/api/users/{id}", get(users::get_by_id))
         .route("/api/users/@{handle}", get(users::get_by_handle))
         .route("/api/sessions/{id}", get(sessions::get_by_id))
+        .route("/api/tags/{id}", get(tags::get_by_id))
+        .route("/api/tags/#{id}", get(tags::get_by_name))
 }
 
 pub struct CompositeError(Response);
@@ -37,4 +43,4 @@ macro_rules! composite_from {
         )+
     };
 }
-composite_from!(AuthError, UserError, SessionError);
+composite_from!(AuthError, UserError, SessionError, TagError);
