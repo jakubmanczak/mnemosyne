@@ -90,9 +90,9 @@ pub struct TagName(String);
 
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Serialize)]
 pub enum TagNameError {
-    #[error("Tag is too short - must be 3 or more characters.")]
+    #[error("Tag is too short - must be 2 or more characters.")]
     TagTooShort,
-    #[error("Tag is too long - must be 16 or less characters.")]
+    #[error("Tag is too long - must be 24 or less characters.")]
     TagTooLong,
     #[error("Tag must consist of ASCII alphanumerics or mid-tag dashes only.")]
     TagNonDashAsciiAlphanumeric,
@@ -110,8 +110,8 @@ impl TagName {
     }
     pub fn validate_str(str: &str) -> Result<(), TagNameError> {
         match str.len() {
-            ..=2 => return Err(TagNameError::TagTooShort),
-            17.. => return Err(TagNameError::TagTooLong),
+            ..2 => return Err(TagNameError::TagTooShort),
+            25.. => return Err(TagNameError::TagTooLong),
             _ => (),
         };
         if str.bytes().any(|c| !c.is_ascii_alphanumeric() && c != b'-') {
@@ -212,12 +212,20 @@ fn tagname_consecutive_dash_fail() {
 #[test]
 #[should_panic]
 fn tagname_short_fail() {
+    TagName::new("x").unwrap();
+}
+#[test]
+fn tagname_short_pass() {
     TagName::new("xd").unwrap();
 }
 #[test]
 #[should_panic]
 fn tagname_long_fail() {
-    TagName::new("xddddddddddddddddddddddddddd").unwrap();
+    TagName::new("1234567890123456789012345").unwrap();
+}
+#[test]
+fn tagname_long_pass() {
+    TagName::new("123456789012345678901234").unwrap();
 }
 #[test]
 #[should_panic]
