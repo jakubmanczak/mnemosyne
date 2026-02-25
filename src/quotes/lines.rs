@@ -1,2 +1,9 @@
-#[allow(unused)]
-pub struct QuoteLine;
+use uuid::Uuid;
+
+use crate::persons::{Person, names::Name};
+
+pub struct QuoteLine {
+    pub id: Uuid,
+    pub attribution: (Name, Person),
+    pub content: String,
+}
