@@ -24,6 +24,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     database::migrations()?;
+    users::auth::init_password_dummies();
     users::setup::initialise_reserved_users_if_needed()?;
 
     let port = match std::env::var("PORT") {

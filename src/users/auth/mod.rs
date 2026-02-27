@@ -1,3 +1,6 @@
+use std::sync::LazyLock;
+
+use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use axum::http::HeaderMap;
 use rand08::{RngCore, rngs::OsRng};
 
@@ -29,9 +32,19 @@ pub trait UserPasswordHashing {
     /// Returns whether the password matches the hash
     fn match_hash_password(passw: &str, hash: &str) -> Result<bool, argon2::password_hash::Error>;
 }
-pub trait UserAuthDummyData {
-    const DUMMY_PASSWORD_PHC: &str;
-    const DUMMY_PASSWORD: &str;
+
+pub static SHARED_ARGON: LazyLock<Argon2> = LazyLock::new(|| Argon2::default());
+pub const DUMMY_PASSWORD: &str = "PASSWORD";
+pub static DUMMY_PASSWORD_PHC: LazyLock<String> = LazyLock::new(|| {
+    let salt = SaltString::generate(&mut OsRng);
+    SHARED_ARGON
+        .hash_password(DUMMY_PASSWORD.as_bytes(), &salt)
+        .unwrap()
+        .to_string()
+});
+pub fn init_password_dummies() {
+    let _ = &*DUMMY_PASSWORD_PHC;
+    println!("Password hashing setup finished");
 }
 
 #[derive(thiserror::Error, Debug)]

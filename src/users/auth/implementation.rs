@@ -1,4 +1,4 @@
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString};
+use argon2::{PasswordHash, PasswordHasher, PasswordVerifier, password_hash::SaltString};
 use axum::{
     http::{
         HeaderMap, StatusCode,
@@ -15,8 +15,9 @@ use crate::{
     users::{
         User,
         auth::{
-            AuthError, COOKIE_NAME, SessionAuthRequired, SessionAuthenticate, TokenSize,
-            UserAuthDummyData, UserAuthRequired, UserAuthenticate, UserPasswordHashing,
+            AuthError, COOKIE_NAME, DUMMY_PASSWORD, DUMMY_PASSWORD_PHC, SHARED_ARGON,
+            SessionAuthRequired, SessionAuthenticate, TokenSize, UserAuthRequired,
+            UserAuthenticate, UserPasswordHashing,
         },
         sessions::Session,
     },
@@ -75,27 +76,16 @@ impl SessionAuthRequired for Option<Session> {
 impl UserPasswordHashing for User {
     fn hash_password(passw: &str) -> Result<String, argon2::password_hash::Error> {
         use rand08::rngs::OsRng as ArgonOsRng;
-        let argon = Argon2::default();
         let passw = passw.as_bytes();
         let salt = SaltString::generate(&mut ArgonOsRng);
 
-        Ok(argon.hash_password(passw, &salt)?.to_string())
+        Ok(SHARED_ARGON.hash_password(passw, &salt)?.to_string())
     }
     fn match_hash_password(passw: &str, hash: &str) -> Result<bool, argon2::password_hash::Error> {
-        let argon = Argon2::default();
         let passw = passw.as_bytes();
         let hash = PasswordHash::try_from(hash)?;
-        Ok(argon.verify_password(passw, &hash).is_ok())
+        Ok(SHARED_ARGON.verify_password(passw, &hash).is_ok())
     }
-}
-
-// TODO: generate these at startup using predefined Argon2 params if
-// these ever change from ::Default - the PHC must have the same factors as real hashes.
-impl UserAuthDummyData for User {
-    /// This PHC generated for b"password"
-    const DUMMY_PASSWORD_PHC: &str = "$argon2id$v=19$m=19456,t=2,p=1$PXcTKpFhLRB70fVF35XYDQ$QOW2IxdPUvqD38+ScqX5SgO+jwweaMO9DUGqmkTeofQ";
-    /// Different than the input password of the PHC
-    const DUMMY_PASSWORD: &str = "different_password";
 }
 
 impl From<argon2::password_hash::Error> for AuthError {
@@ -213,7 +203,7 @@ pub fn authenticate_via_credentials(
             false => Err(AuthError::InvalidCredentials),
         },
         _ => {
-            let _ = User::match_hash_password(User::DUMMY_PASSWORD, User::DUMMY_PASSWORD_PHC)?;
+            let _ = User::match_hash_password(DUMMY_PASSWORD, &*DUMMY_PASSWORD_PHC)?;
             Err(AuthError::InvalidCredentials)
         }
     }
