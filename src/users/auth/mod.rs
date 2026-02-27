@@ -1,7 +1,10 @@
 use axum::http::HeaderMap;
 use rand08::{RngCore, rngs::OsRng};
 
-use crate::users::{User, UserError, sessions::SessionError};
+use crate::users::{
+    User, UserError,
+    sessions::{Session, SessionError},
+};
 
 pub mod implementation;
 
@@ -12,6 +15,12 @@ pub trait UserAuthenticate {
 }
 pub trait UserAuthRequired {
     fn required(self) -> Result<User, AuthError>;
+}
+pub trait SessionAuthenticate {
+    fn authenticate(headers: &HeaderMap) -> Result<Option<Session>, AuthError>;
+}
+pub trait SessionAuthRequired {
+    fn required(self) -> Result<Session, AuthError>;
 }
 
 pub trait UserPasswordHashing {

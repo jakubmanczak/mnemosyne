@@ -8,7 +8,7 @@ use serde::Deserialize;
 use crate::users::{
     User,
     auth::{
-        AuthError, COOKIE_NAME, UserAuthRequired, UserAuthenticate,
+        AuthError, COOKIE_NAME, SessionAuthRequired, SessionAuthenticate, UserAuthRequired,
         implementation::authenticate_via_credentials,
     },
     sessions::Session,
@@ -38,5 +38,8 @@ pub async fn login(Json(creds): Json<LoginForm>) -> Result<Response, AuthError> 
 }
 
 pub async fn logout(headers: HeaderMap) -> Result<Response, AuthError> {
-    todo!()
+    let mut s = Session::authenticate(&headers)?.required()?;
+    s.revoke(Some(&User::get_by_id(s.user_id)?))?;
+    let cookie = format!("{COOKIE_NAME}=revoking; Path=/; HttpOnly; Max-Age=0");
+    Ok(([(header::SET_COOKIE, cookie)], "Logged out!").into_response())
 }

@@ -15,8 +15,8 @@ use crate::{
     users::{
         User,
         auth::{
-            AuthError, COOKIE_NAME, TokenSize, UserAuthDummyData, UserAuthRequired,
-            UserAuthenticate, UserPasswordHashing,
+            AuthError, COOKIE_NAME, SessionAuthRequired, SessionAuthenticate, TokenSize,
+            UserAuthDummyData, UserAuthRequired, UserAuthenticate, UserPasswordHashing,
         },
         sessions::Session,
     },
@@ -60,6 +60,14 @@ impl UserAuthRequired for Option<User> {
         match self {
             Self::None => Err(AuthError::AuthRequired),
             Self::Some(u) => Ok(u),
+        }
+    }
+}
+impl SessionAuthRequired for Option<Session> {
+    fn required(self) -> Result<Session, AuthError> {
+        match self {
+            Self::None => Err(AuthError::AuthRequired),
+            Self::Some(s) => Ok(s),
         }
     }
 }
@@ -122,48 +130,62 @@ impl<'a> AuthScheme<'a> {
 
 impl UserAuthenticate for User {
     fn authenticate(headers: &HeaderMap) -> Result<Option<User>, AuthError> {
-        let mut auth_values = Vec::new();
-        for auth_header in headers.get_all(AUTHORIZATION).iter() {
-            if let Ok(s) = auth_header.to_str() {
-                auth_values.push(s.to_string());
-            }
-        }
-        for cookie_header in headers.get_all(COOKIE).iter() {
-            if let Ok(cookies) = cookie_header.to_str() {
-                for cookie in cookies.split(';') {
-                    let cookie = cookie.trim();
-                    if let Some(value) = cookie.strip_prefix(&format!("{}=", COOKIE_NAME)) {
-                        auth_values.push(format!("Bearer {}", value));
-                    }
-                }
-            }
-        }
-
-        let mut basic_auth: Option<&str> = None;
-        let mut bearer_auth: Option<&str> = None;
-        for header in &auth_values {
-            let header = header.trim();
-            match AuthScheme::from_header(header) {
-                AuthScheme::Basic(creds) => {
-                    if basic_auth.is_none() {
-                        basic_auth = Some(creds);
-                    }
-                }
-                AuthScheme::Bearer(token) => {
-                    if bearer_auth.is_none() {
-                        bearer_auth = Some(token);
-                    }
-                }
-                AuthScheme::None => {}
-            }
-        }
+        let (basic_auth, bearer_auth) = auth_common(&headers);
 
         match (basic_auth, bearer_auth) {
-            (Some(creds), _) => authenticate_basic(creds),
-            (None, Some(token)) => authenticate_bearer(token),
+            (Some(creds), _) => authenticate_basic(&creds),
+            (None, Some(token)) => authenticate_bearer(&token),
             _ => Ok(None),
         }
     }
+}
+impl SessionAuthenticate for Session {
+    fn authenticate(headers: &HeaderMap) -> Result<Option<Session>, AuthError> {
+        let (_, bearer_auth) = auth_common(&headers);
+        if let Some(token) = bearer_auth {
+            authenticate_bearer_with_session(&token)
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+fn auth_common(headers: &HeaderMap) -> (Option<String>, Option<String>) {
+    let mut auth_values = Vec::new();
+    for auth_header in headers.get_all(AUTHORIZATION).iter() {
+        if let Ok(s) = auth_header.to_str() {
+            auth_values.push(s.to_string());
+        }
+    }
+    for cookie_header in headers.get_all(COOKIE).iter() {
+        if let Ok(cookies) = cookie_header.to_str() {
+            for cookie in cookies.split(';') {
+                let cookie = cookie.trim();
+                if let Some(value) = cookie.strip_prefix(&format!("{}=", COOKIE_NAME)) {
+                    auth_values.push(format!("Bearer {}", value));
+                }
+            }
+        }
+    }
+    let mut basic_auth: Option<String> = None;
+    let mut bearer_auth: Option<String> = None;
+    for header in &auth_values {
+        let header = header.trim();
+        match AuthScheme::from_header(header) {
+            AuthScheme::Basic(creds) => {
+                if basic_auth.is_none() {
+                    basic_auth = Some(creds.into());
+                }
+            }
+            AuthScheme::Bearer(token) => {
+                if bearer_auth.is_none() {
+                    bearer_auth = Some(token.into());
+                }
+            }
+            AuthScheme::None => {}
+        }
+    }
+    (basic_auth, bearer_auth)
 }
 
 fn authenticate_basic(credentials: &str) -> Result<Option<User>, AuthError> {
@@ -204,4 +226,12 @@ fn authenticate_bearer(token: &str) -> Result<Option<User>, AuthError> {
     }
     s.prolong()?;
     Ok(Some(User::get_by_id(s.user_id)?))
+}
+fn authenticate_bearer_with_session(token: &str) -> Result<Option<Session>, AuthError> {
+    let mut s = Session::get_by_token(token)?;
+    if s.is_expired_or_revoked() {
+        return Err(AuthError::InvalidCredentials);
+    }
+    s.prolong()?;
+    Ok(Some(s))
 }
