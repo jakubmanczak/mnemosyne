@@ -5,6 +5,7 @@ use axum::{
 };
 
 use crate::{
+    database::DatabaseError,
     tags::TagError,
     users::{UserError, auth::AuthError, sessions::SessionError},
 };
@@ -23,6 +24,7 @@ pub fn api_router() -> Router {
         .route("/api/users/{id}", get(users::get_by_id))
         .route("/api/users/@{handle}", get(users::get_by_handle))
         .route("/api/sessions/{id}", get(sessions::get_by_id))
+        .route("/api/sessions/{id}/revoke", post(sessions::revoke_by_id))
         .route("/api/tags/{id}", get(tags::get_by_id))
         .route("/api/tags/#{name}", get(tags::get_by_name))
 }
@@ -45,4 +47,4 @@ macro_rules! composite_from {
         )+
     };
 }
-composite_from!(AuthError, UserError, SessionError, TagError);
+composite_from!(AuthError, UserError, SessionError, TagError, DatabaseError);

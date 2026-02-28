@@ -1,5 +1,6 @@
 use std::{env, error::Error, sync::LazyLock};
 
+use axum::{http::StatusCode, response::IntoResponse};
 use rusqlite::{Connection, OptionalExtension};
 
 macro_rules! migration {
@@ -20,6 +21,16 @@ CREATE TABLE IF NOT EXISTS migrations (
     time    INTEGER DEFAULT (unixepoch())
 );
 "#;
+
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct DatabaseError(#[from] rusqlite::Error);
+impl IntoResponse for DatabaseError {
+    fn into_response(self) -> axum::response::Response {
+        println!("[DB ERROR] {}", self.to_string());
+        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error.").into_response()
+    }
+}
 
 pub fn conn() -> Result<Connection, rusqlite::Error> {
     let conn = Connection::open(&*DB_URL)?;

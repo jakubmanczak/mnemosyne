@@ -1,7 +1,7 @@
 use axum::{
     Json,
     extract::Path,
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
 use uuid::Uuid;
@@ -29,5 +29,31 @@ pub async fn get_by_id(
     {
         true => Ok(Json(s).into_response()),
         false => Err(SessionError::NoSessionWithId(id))?,
+    }
+}
+
+pub async fn revoke_by_id(
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    let mut s = Session::get_by_id(id)?;
+
+    match s.user_id == u.id
+        || u.has_permission(Permission::RevokeOthersSessions)
+            .is_ok_and(|v| v)
+    {
+        true => {
+            s.revoke(Some(&u))?;
+            Ok(Json(s).into_response())
+        }
+        false => match u.has_permission(Permission::ListOthersSessions)? {
+            true => Ok((
+                StatusCode::FORBIDDEN,
+                "You don't have permission to revoke this session.",
+            )
+                .into_response()),
+            false => Err(SessionError::NoSessionWithId(id))?,
+        },
     }
 }
