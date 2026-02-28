@@ -25,7 +25,7 @@ pub fn api_router() -> Router {
         .route("/api/users/@{handle}", get(users::get_by_handle))
         .route("/api/sessions/{id}", get(sessions::get_by_id))
         .route("/api/tags/{id}", get(tags::get_by_id))
-        .route("/api/tags/#{id}", get(tags::get_by_name))
+        .route("/api/tags/#{name}", get(tags::get_by_name))
 }
 
 pub struct CompositeError(Response);
