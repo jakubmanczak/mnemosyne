@@ -14,7 +14,6 @@ mod sessions;
 mod tags;
 mod users;
 
-// TODO: PERMISSIONS FOR ENDPOINTS & ACTIONS
 pub fn api_router() -> Router {
     Router::new()
         .route("/api/live", get(async || "Mnemosyne lives"))

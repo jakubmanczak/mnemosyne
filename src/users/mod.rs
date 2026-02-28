@@ -17,6 +17,7 @@ use crate::{
 
 pub mod auth;
 pub mod handle;
+pub mod permissions;
 pub mod sessions;
 pub mod setup;
 

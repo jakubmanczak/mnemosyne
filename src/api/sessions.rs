@@ -11,7 +11,8 @@ use crate::{
     users::{
         User,
         auth::{UserAuthRequired, UserAuthenticate},
-        sessions::Session,
+        permissions::Permission,
+        sessions::{Session, SessionError},
     },
 };
 
@@ -19,6 +20,14 @@ pub async fn get_by_id(
     Path(id): Path<Uuid>,
     headers: HeaderMap,
 ) -> Result<Response, CompositeError> {
-    User::authenticate(&headers)?.required()?;
-    Ok(Json(Session::get_by_id(id)?).into_response())
+    let u = User::authenticate(&headers)?.required()?;
+    let s = Session::get_by_id(id)?;
+
+    match s.user_id == u.id
+        || u.has_permission(Permission::ListOthersSessions)
+            .is_ok_and(|v| v)
+    {
+        true => Ok(Json(s).into_response()),
+        false => Err(SessionError::NoSessionWithId(id))?,
+    }
 }
