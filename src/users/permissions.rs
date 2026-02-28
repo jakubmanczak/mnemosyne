@@ -6,6 +6,8 @@ pub enum Permission {
     ListOthersSessions,
     // All Users have the right to revoke their own sessions
     RevokeOthersSessions,
+    // All Users have the right to change their own password
+    ChangeOthersPasswords,
 }
 
 impl User {

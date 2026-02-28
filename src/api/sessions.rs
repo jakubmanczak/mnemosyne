@@ -16,6 +16,8 @@ use crate::{
     },
 };
 
+const CANT_REVOKE: &str = "You don't have permission to change this user's password.";
+
 pub async fn get_by_id(
     Path(id): Path<Uuid>,
     headers: HeaderMap,
@@ -48,11 +50,7 @@ pub async fn revoke_by_id(
             Ok(Json(s).into_response())
         }
         false => match u.has_permission(Permission::ListOthersSessions)? {
-            true => Ok((
-                StatusCode::FORBIDDEN,
-                "You don't have permission to revoke this session.",
-            )
-                .into_response()),
+            true => Ok((StatusCode::FORBIDDEN, CANT_REVOKE).into_response()),
             false => Err(SessionError::NoSessionWithId(id))?,
         },
     }

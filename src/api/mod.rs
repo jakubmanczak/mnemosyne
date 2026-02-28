@@ -23,6 +23,7 @@ pub fn api_router() -> Router {
         .route("/api/users/me", get(users::get_me))
         .route("/api/users/{id}", get(users::get_by_id))
         .route("/api/users/@{handle}", get(users::get_by_handle))
+        .route("/api/users/{id}/setpassw", get(users::change_password))
         .route("/api/sessions/{id}", get(sessions::get_by_id))
         .route("/api/sessions/{id}/revoke", post(sessions::revoke_by_id))
         .route("/api/tags/{id}", get(tags::get_by_id))
