@@ -8,10 +8,13 @@ pub enum Permission {
     RevokeOthersSessions,
     // All Users have the right to change their own password
     ChangeOthersPasswords,
+    // All Users have the right to change their own handle
+    ChangeOthersHandles,
 }
 
 impl User {
     pub fn has_permission(&self, permission: Permission) -> Result<bool, DatabaseError> {
+        // Infradmin and systemuser have all permissions
         if self.is_infradmin() || self.is_systemuser() {
             return Ok(true);
         }

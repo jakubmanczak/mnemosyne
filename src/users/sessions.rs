@@ -139,7 +139,6 @@ impl Session {
         Ok(())
     }
 
-    #[allow(unused)]
     pub fn revoke(&mut self, actor: Option<&User>) -> Result<(), SessionError> {
         let now = Utc::now();
         let id = actor.map(|u| u.id).unwrap_or(Uuid::nil());

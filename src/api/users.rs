@@ -17,7 +17,9 @@ use crate::{
     },
 };
 
+const CANT_CHANGE_OTHERS_HANDLE: &str = "You don't have permission to change this user's handle.";
 const CANT_CHANGE_OTHERS_PASSW: &str = "You don't have permission to change this user's password.";
+const HANDLE_CHANGED_SUCCESS: &str = "Handle changed successfully.";
 const PASSW_CHANGED_SUCCESS: &str = "Password changed successfully.";
 
 pub async fn get_me(headers: HeaderMap) -> Result<Response, CompositeError> {
@@ -38,6 +40,28 @@ pub async fn get_by_handle(
 ) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
     Ok(Json(User::get_by_handle(handle)?).into_response())
+}
+
+#[derive(Deserialize)]
+pub struct ChangeHandleForm {
+    handle: UserHandle,
+}
+pub async fn change_handle(
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(form): Json<ChangeHandleForm>,
+) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    let mut target = if u.id == id {
+        u
+    } else {
+        if u.has_permission(Permission::ChangeOthersHandles)? == false {
+            return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_HANDLE).into_response());
+        }
+        User::get_by_id(id)?
+    };
+    target.set_handle(form.handle)?;
+    Ok(HANDLE_CHANGED_SUCCESS.into_response())
 }
 
 #[derive(Deserialize)]

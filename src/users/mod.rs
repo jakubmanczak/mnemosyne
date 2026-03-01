@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use rusqlite::OptionalExtension;
+use rusqlite::{ErrorCode, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -35,6 +35,8 @@ pub enum UserError {
     NoUserWithId(Uuid),
     #[error("No user found with handle {0}")]
     NoUserWithHandle(UserHandle),
+    #[error("A user with handle {0} already exists")]
+    HandleAlreadyExists(UserHandle),
     #[error("Database error: {0}")]
     DatabaseError(String),
     #[error("Argon2 passhash error: {0}")]
@@ -71,6 +73,21 @@ impl User {
             Some(u) => Ok(u),
             None => Err(UserError::NoUserWithHandle(handle)),
         }
+    }
+    pub fn set_handle(&mut self, new_handle: UserHandle) -> Result<(), UserError> {
+        let conn = database::conn()?;
+        conn.prepare("UPDATE users SET handle = ?1 WHERE id = ?2")?
+            .execute((&new_handle, self.id))
+            .map_err(|e| {
+                if let Some(e) = e.sqlite_error() {
+                    if e.code == ErrorCode::ConstraintViolation {
+                        return UserError::HandleAlreadyExists(new_handle.clone());
+                    }
+                }
+                UserError::from(e)
+            })?;
+        self.handle = new_handle;
+        Ok(())
     }
 }
 
@@ -123,7 +140,6 @@ impl User {
     /// to do everything and probably should not be used as a regular account
     /// due to the ramifications of compromise. But it could be used for that,
     /// and have its name changed.
-    #[allow(unused)]
     pub fn is_infradmin(&self) -> bool {
         self.id == Uuid::max()
     }
@@ -169,7 +185,6 @@ impl User {
     /// for actions performed by Mnemosyne internally.
     /// It shall not be available for log-in.
     /// It should not have its name changed, and should be protected from that.
-    #[allow(unused)]
     pub fn is_systemuser(&self) -> bool {
         self.id == Uuid::nil()
     }
@@ -199,6 +214,7 @@ impl IntoResponse for UserError {
             Self::UserHandleError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             Self::NoUserWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
             Self::NoUserWithHandle(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::HandleAlreadyExists(_) => (StatusCode::CONFLICT, self.to_string()),
         }
         .into_response()
     }
