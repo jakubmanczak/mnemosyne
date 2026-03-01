@@ -33,7 +33,7 @@ pub trait UserPasswordHashing {
     fn match_hash_password(passw: &str, hash: &str) -> Result<bool, argon2::password_hash::Error>;
 }
 
-pub static SHARED_ARGON: LazyLock<Argon2> = LazyLock::new(|| Argon2::default());
+pub static SHARED_ARGON: LazyLock<Argon2> = LazyLock::new(Argon2::default);
 pub const DUMMY_PASSWORD: &str = "PASSWORD";
 pub static DUMMY_PASSWORD_PHC: LazyLock<String> = LazyLock::new(|| {
     let salt = SaltString::generate(&mut OsRng);
@@ -70,15 +70,17 @@ pub enum AuthError {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[allow(unused)]
 pub enum TokenSize {
     /// 5 bytes = 8 chars
+    #[allow(unused)]
     Char8,
     /// 10 bytes = 16 chars
     Char16,
     /// 20 bytes = 32 chars
+    #[allow(unused)]
     Char32,
     /// 40 bytes = 64 chars
+    #[allow(unused)]
     Char64,
 }
 

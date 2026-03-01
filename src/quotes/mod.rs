@@ -5,6 +5,7 @@ use crate::quotes::lines::QuoteLine;
 
 pub mod lines;
 
+#[allow(unused)]
 pub struct Quote {
     pub id: Uuid,
     pub lines: Vec<QuoteLine>,

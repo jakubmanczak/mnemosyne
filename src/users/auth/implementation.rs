@@ -120,7 +120,7 @@ impl<'a> AuthScheme<'a> {
 
 impl UserAuthenticate for User {
     fn authenticate(headers: &HeaderMap) -> Result<Option<User>, AuthError> {
-        let (basic_auth, bearer_auth) = auth_common(&headers);
+        let (basic_auth, bearer_auth) = auth_common(headers);
 
         match (basic_auth, bearer_auth) {
             (Some(creds), _) => authenticate_basic(&creds),
@@ -131,7 +131,7 @@ impl UserAuthenticate for User {
 }
 impl SessionAuthenticate for Session {
     fn authenticate(headers: &HeaderMap) -> Result<Option<Session>, AuthError> {
-        let (_, bearer_auth) = auth_common(&headers);
+        let (_, bearer_auth) = auth_common(headers);
         if let Some(token) = bearer_auth {
             authenticate_bearer_with_session(&token)
         } else {
@@ -203,7 +203,7 @@ pub fn authenticate_via_credentials(
             false => Err(AuthError::InvalidCredentials),
         },
         _ => {
-            let _ = User::match_hash_password(DUMMY_PASSWORD, &*DUMMY_PASSWORD_PHC)?;
+            let _ = User::match_hash_password(DUMMY_PASSWORD, &DUMMY_PASSWORD_PHC)?;
             Err(AuthError::InvalidCredentials)
         }
     }

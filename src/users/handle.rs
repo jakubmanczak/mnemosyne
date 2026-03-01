@@ -14,11 +14,11 @@ pub struct UserHandle(String);
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Serialize)]
 pub enum UserHandleError {
     #[error("Handle is too short - must be 3 or more characters.")]
-    HandleTooShort,
+    TooShort,
     #[error("Handle is too long - must be 16 or less characters.")]
-    HandleTooLong,
+    TooLong,
     #[error("Handle must consist of ASCII alphanumeric characters only.")]
-    HandleNonAsciiAlphanumeric,
+    NonAsciiAlphanumeric,
 }
 
 impl UserHandle {
@@ -29,12 +29,12 @@ impl UserHandle {
     }
     pub fn validate_str(str: &str) -> Result<(), UserHandleError> {
         match str.len() {
-            ..=2 => return Err(UserHandleError::HandleTooShort),
-            17.. => return Err(UserHandleError::HandleTooLong),
+            ..=2 => return Err(UserHandleError::TooShort),
+            17.. => return Err(UserHandleError::TooLong),
             _ => (),
         };
         if str.bytes().any(|c| !c.is_ascii_alphanumeric()) {
-            return Err(UserHandleError::HandleNonAsciiAlphanumeric);
+            return Err(UserHandleError::NonAsciiAlphanumeric);
         }
         Ok(())
     }
@@ -93,7 +93,7 @@ impl From<UserHandle> for String {
 
 impl ToSql for UserHandle {
     fn to_sql(&self) -> RusqliteResult<ToSqlOutput<'_>> {
-        Ok(self.0.to_sql()?)
+        self.0.to_sql()
     }
 }
 

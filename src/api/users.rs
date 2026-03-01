@@ -55,7 +55,7 @@ pub async fn change_handle(
     let mut target = if u.id == id {
         u
     } else {
-        if u.has_permission(Permission::ChangeOthersHandles)? == false {
+        if !u.has_permission(Permission::ChangeOthersHandles)? {
             return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_HANDLE).into_response());
         }
         User::get_by_id(id)?
@@ -77,7 +77,7 @@ pub async fn change_password(
     let mut target = if u.id == id {
         u
     } else {
-        if u.has_permission(Permission::ChangeOthersPasswords)? == false {
+        if !u.has_permission(Permission::ChangeOthersPasswords)? {
             return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_PASSW).into_response());
         }
         User::get_by_id(id)?

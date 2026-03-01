@@ -91,15 +91,15 @@ pub struct TagName(String);
 #[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Serialize)]
 pub enum TagNameError {
     #[error("Tag is too short - must be 2 or more characters.")]
-    TagTooShort,
+    TooShort,
     #[error("Tag is too long - must be 24 or less characters.")]
-    TagTooLong,
+    TooLong,
     #[error("Tag must consist of ASCII alphanumerics or mid-tag dashes only.")]
-    TagNonDashAsciiAlphanumeric,
+    NonDashAsciiAlphanumeric,
     #[error("Tag must not have a leading or trailing dash.")]
-    TagLeadingTrailingDash,
+    LeadingTrailingDash,
     #[error("Tag must not have consecutive dashes.")]
-    TagConsecutiveDashes,
+    ConsecutiveDashes,
 }
 
 impl TagName {
@@ -110,22 +110,22 @@ impl TagName {
     }
     pub fn validate_str(str: &str) -> Result<(), TagNameError> {
         match str.len() {
-            ..2 => return Err(TagNameError::TagTooShort),
-            25.. => return Err(TagNameError::TagTooLong),
+            ..2 => return Err(TagNameError::TooShort),
+            25.. => return Err(TagNameError::TooLong),
             _ => (),
         };
         if str.bytes().any(|c| !c.is_ascii_alphanumeric() && c != b'-') {
-            return Err(TagNameError::TagNonDashAsciiAlphanumeric);
+            return Err(TagNameError::NonDashAsciiAlphanumeric);
         }
         if str.starts_with('-') || str.ends_with('-') {
-            return Err(TagNameError::TagLeadingTrailingDash);
+            return Err(TagNameError::LeadingTrailingDash);
         }
         if str
             .as_bytes()
             .windows(2)
             .any(|w| w[0] == b'-' && w[1] == b'-')
         {
-            return Err(TagNameError::TagConsecutiveDashes);
+            return Err(TagNameError::ConsecutiveDashes);
         }
         Ok(())
     }
@@ -184,7 +184,7 @@ impl From<TagName> for String {
 
 impl ToSql for TagName {
     fn to_sql(&self) -> RusqliteResult<ToSqlOutput<'_>> {
-        Ok(self.0.to_sql()?)
+        self.0.to_sql()
     }
 }
 

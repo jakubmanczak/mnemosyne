@@ -79,10 +79,10 @@ impl User {
         conn.prepare("UPDATE users SET handle = ?1 WHERE id = ?2")?
             .execute((&new_handle, self.id))
             .map_err(|e| {
-                if let Some(e) = e.sqlite_error() {
-                    if e.code == ErrorCode::ConstraintViolation {
-                        return UserError::HandleAlreadyExists(new_handle.clone());
-                    }
+                if let Some(e) = e.sqlite_error()
+                    && e.code == ErrorCode::ConstraintViolation
+                {
+                    return UserError::HandleAlreadyExists(new_handle.clone());
                 }
                 UserError::from(e)
             })?;

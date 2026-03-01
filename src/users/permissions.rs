@@ -13,7 +13,10 @@ pub enum Permission {
 }
 
 impl User {
-    pub fn has_permission(&self, permission: Permission) -> Result<bool, DatabaseError> {
+    pub fn has_permission(
+        &self,
+        #[allow(unused)] permission: Permission,
+    ) -> Result<bool, DatabaseError> {
         // Infradmin and systemuser have all permissions
         if self.is_infradmin() || self.is_systemuser() {
             return Ok(true);

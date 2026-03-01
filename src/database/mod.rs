@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS migrations (
 pub struct DatabaseError(#[from] rusqlite::Error);
 impl IntoResponse for DatabaseError {
     fn into_response(self) -> axum::response::Response {
-        println!("[DB ERROR] {}", self.to_string());
+        println!("[DB ERROR] {}", self);
         (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error.").into_response()
     }
 }
@@ -35,7 +35,7 @@ impl IntoResponse for DatabaseError {
 pub fn conn() -> Result<Connection, rusqlite::Error> {
     let conn = Connection::open(&*DB_URL)?;
     for pragma in CONNECTION_PRAGMAS {
-        conn.query_row(*pragma, (), |_| Ok(())).optional()?;
+        conn.query_row(pragma, (), |_| Ok(())).optional()?;
     }
     Ok(conn)
 }
@@ -43,7 +43,7 @@ pub fn conn() -> Result<Connection, rusqlite::Error> {
 pub fn migrations() -> Result<(), Box<dyn Error>> {
     let conn = Connection::open(&*DB_URL)?;
     for pragma in PERSISTENT_PRAGMAS {
-        conn.query_row(*pragma, (), |_| Ok(()))?;
+        conn.query_row(pragma, (), |_| Ok(()))?;
     }
     conn.execute(TABLE_MIGRATIONS, ())?;
 
@@ -58,7 +58,7 @@ pub fn migrations() -> Result<(), Box<dyn Error>> {
         println!("Applying migration {key}...");
 
         conn.execute_batch(sql)?;
-        conn.execute("INSERT INTO migrations(id) VALUES (?1)", &[key])?;
+        conn.execute("INSERT INTO migrations(id) VALUES (?1)", [key])?;
     }
 
     if changes {

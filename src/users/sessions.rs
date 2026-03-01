@@ -67,7 +67,7 @@ impl Session {
         let res = database::conn()?
             .prepare("SELECT user_id, expiry, revoked, revoked_at, revoked_by FROM sessions WHERE id = ?1")?
             .query_one((&id,), |r| Ok(Session {
-                id: id,
+                id,
                 user_id: r.get(0)?,
                 expiry: r.get(1)?,
                 status: match r.get::<_, bool>(2)? {

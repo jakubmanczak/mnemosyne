@@ -17,10 +17,10 @@ const ISE_MSG: &str = "Internal server error";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    if let Err(e) = dotenvy::dotenv() {
-        if !e.not_found() {
-            return Err(e.into());
-        }
+    if let Err(e) = dotenvy::dotenv()
+        && !e.not_found()
+    {
+        return Err(e.into());
     }
 
     database::migrations()?;
