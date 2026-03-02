@@ -3,6 +3,7 @@ use std::error::Error;
 use tokio::net::TcpListener;
 
 mod api;
+mod config;
 mod database;
 mod persons;
 mod quotes;
@@ -22,6 +23,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     {
         return Err(e.into());
     }
+    env_logger::builder()
+        .filter_level(log::LevelFilter::Info)
+        .parse_default_env()
+        .format(config::envlogger_write_format)
+        .init();
 
     database::migrations()?;
     users::auth::init_password_dummies();
@@ -36,7 +42,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
     let r = api::api_router();
     let l = TcpListener::bind(format!("0.0.0.0:{port}")).await?;
-    println!("Listener bound to {}", l.local_addr()?);
+    log::info!("Listener bound to {}", l.local_addr()?);
 
     axum::serve(l, r).await?;
     Ok(())

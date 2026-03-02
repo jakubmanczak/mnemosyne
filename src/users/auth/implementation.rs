@@ -45,11 +45,11 @@ impl IntoResponse for AuthError {
             Self::InvalidBase64(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::InvalidUtf8(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::DatabaseError(e) => {
-                eprintln!("[ERROR] Database error occured: {e}");
+                log::error!("[ERROR] Database error occured: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
             }
             Self::PassHashError(e) => {
-                eprintln!("[ERROR] A passwordhash error occured: {e}");
+                log::error!("[ERROR] A passwordhash error occured: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
             }
         }

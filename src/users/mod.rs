@@ -154,10 +154,10 @@ impl User {
     pub fn regenerate_infradmin_password(&mut self) -> Result<(), UserError> {
         let passw = auth::generate_token(auth::TokenSize::Char16);
         self.set_password(Some(&passw))?;
-        println!("[USERS] The infradmin account password has been (re)generated.");
-        println!("[USERS] Handle: {}", self.handle.as_str());
-        println!("[USERS] Password: {}", passw);
-        println!("[USERS] The infradmin is urged to change this password to a secure one.\n");
+        log::info!("[USERS] The infradmin account password has been (re)generated.");
+        log::info!("[USERS] Handle: {}", self.handle.as_str());
+        log::info!("[USERS] Password: {}", passw);
+        log::info!("[USERS] The infradmin is urged to change this password to a secure one.\n");
         Ok(())
     }
 
@@ -204,11 +204,11 @@ impl IntoResponse for UserError {
     fn into_response(self) -> Response {
         match self {
             Self::DatabaseError(e) => {
-                eprintln!("[ERROR] Database error occured: {e}");
+                log::error!("[ERROR] Database error occured: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
             }
             Self::PassHashError(e) => {
-                eprintln!("[ERROR] A passwordhash error occured: {e}");
+                log::error!("[ERROR] A passwordhash error occured: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
             }
             Self::UserHandleError(_) => (StatusCode::BAD_REQUEST, self.to_string()),

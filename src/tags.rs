@@ -72,7 +72,7 @@ impl IntoResponse for TagError {
     fn into_response(self) -> Response {
         match self {
             Self::DatabaseError(e) => {
-                eprintln!("[ERROR] Database error occured: {e}");
+                log::error!("[ERROR] Database error occured: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
             }
             Self::TagNameError(_) => (StatusCode::BAD_REQUEST, self.to_string()),

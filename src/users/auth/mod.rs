@@ -44,7 +44,7 @@ pub static DUMMY_PASSWORD_PHC: LazyLock<String> = LazyLock::new(|| {
 });
 pub fn init_password_dummies() {
     let _ = &*DUMMY_PASSWORD_PHC;
-    println!("Password hashing setup finished");
+    log::info!("Password hashing setup finished");
 }
 
 #[derive(thiserror::Error, Debug)]

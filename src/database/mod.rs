@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS migrations (
 pub struct DatabaseError(#[from] rusqlite::Error);
 impl IntoResponse for DatabaseError {
     fn into_response(self) -> axum::response::Response {
-        println!("[DB ERROR] {}", self);
+        log::error!("[DB ERROR] {}", self);
         (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error.").into_response()
     }
 }
@@ -55,14 +55,14 @@ pub fn migrations() -> Result<(), Box<dyn Error>> {
             continue;
         }
         changes = true;
-        println!("Applying migration {key}...");
+        log::info!("Applying migration {key}...");
 
         conn.execute_batch(sql)?;
         conn.execute("INSERT INTO migrations(id) VALUES (?1)", [key])?;
     }
 
     if changes {
-        println!("Migrations applied.")
+        log::info!("Migrations applied.")
     }
     Ok(())
 }
