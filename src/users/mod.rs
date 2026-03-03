@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     ISE_MSG,
-    database::{self},
+    database::{self, DatabaseError},
     users::{
         auth::UserPasswordHashing,
         handle::{UserHandle, UserHandleError},
@@ -37,8 +37,8 @@ pub enum UserError {
     NoUserWithHandle(UserHandle),
     #[error("A user with handle {0} already exists")]
     HandleAlreadyExists(UserHandle),
-    #[error("Database error: {0}")]
-    DatabaseError(String),
+    #[error("{0}")]
+    DatabaseError(#[from] DatabaseError),
     #[error("Argon2 passhash error: {0}")]
     PassHashError(argon2::password_hash::Error),
 }
@@ -192,7 +192,7 @@ impl User {
 
 impl From<rusqlite::Error> for UserError {
     fn from(error: rusqlite::Error) -> Self {
-        UserError::DatabaseError(error.to_string())
+        UserError::DatabaseError(DatabaseError::from(error))
     }
 }
 impl From<argon2::password_hash::Error> for UserError {
@@ -203,19 +203,19 @@ impl From<argon2::password_hash::Error> for UserError {
 impl IntoResponse for UserError {
     fn into_response(self) -> Response {
         match self {
-            Self::DatabaseError(e) => {
-                log::error!("[ERROR] Database error occured: {e}");
-                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
-            }
+            Self::DatabaseError(e) => e.into_response(),
             Self::PassHashError(e) => {
-                log::error!("[ERROR] A passwordhash error occured: {e}");
-                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
+                log::error!("[PASSHASH] A passwordhash error occured: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
             }
-            Self::UserHandleError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::NoUserWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::NoUserWithHandle(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::HandleAlreadyExists(_) => (StatusCode::CONFLICT, self.to_string()),
+            Self::UserHandleError(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::NoUserWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::NoUserWithHandle(_) => {
+                (StatusCode::BAD_REQUEST, self.to_string()).into_response()
+            }
+            Self::HandleAlreadyExists(_) => {
+                (StatusCode::CONFLICT, self.to_string()).into_response()
+            }
         }
-        .into_response()
     }
 }

@@ -11,7 +11,7 @@ use rusqlite::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{ISE_MSG, database};
+use crate::database::{self, DatabaseError};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tag {
@@ -61,25 +61,21 @@ pub enum TagError {
     #[error("No tag found with name {0}")]
     NoTagWithName(TagName),
     #[error("Database error: {0}")]
-    DatabaseError(String),
+    DatabaseError(#[from] DatabaseError),
 }
 impl From<rusqlite::Error> for TagError {
     fn from(error: rusqlite::Error) -> Self {
-        TagError::DatabaseError(error.to_string())
+        TagError::DatabaseError(DatabaseError::from(error))
     }
 }
 impl IntoResponse for TagError {
     fn into_response(self) -> Response {
         match self {
-            Self::DatabaseError(e) => {
-                log::error!("[ERROR] Database error occured: {e}");
-                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
-            }
-            Self::TagNameError(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::NoTagWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::NoTagWithName(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::DatabaseError(e) => e.into_response(),
+            Self::TagNameError(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::NoTagWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::NoTagWithName(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
         }
-        .into_response()
     }
 }
 

@@ -4,9 +4,12 @@ use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
 use axum::http::HeaderMap;
 use rand08::{RngCore, rngs::OsRng};
 
-use crate::users::{
-    User, UserError,
-    sessions::{Session, SessionError},
+use crate::{
+    database::DatabaseError,
+    users::{
+        User, UserError,
+        sessions::{Session, SessionError},
+    },
 };
 
 pub mod implementation;
@@ -64,7 +67,7 @@ pub enum AuthError {
     #[error("Invalid UTF-8 in credentials")]
     InvalidUtf8(#[from] std::string::FromUtf8Error),
     #[error("Database error: {0}")]
-    DatabaseError(#[from] rusqlite::Error),
+    DatabaseError(#[from] DatabaseError),
     #[error("Argon2 passhash error: {0}")]
     PassHashError(argon2::password_hash::Error),
 }

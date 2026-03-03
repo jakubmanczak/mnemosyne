@@ -11,7 +11,8 @@ use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
 use crate::{
-    ISE_MSG, database,
+    ISE_MSG,
+    database::{self, DatabaseError},
     users::{
         User,
         auth::{
@@ -44,15 +45,17 @@ impl IntoResponse for AuthError {
             Self::InvalidFormat => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::InvalidBase64(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::InvalidUtf8(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
-            Self::DatabaseError(e) => {
-                log::error!("[ERROR] Database error occured: {e}");
-                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
-            }
+            Self::DatabaseError(e) => e.into_response(),
             Self::PassHashError(e) => {
-                log::error!("[ERROR] A passwordhash error occured: {e}");
+                log::error!("[PASSHASH] A passwordhash error occured: {e}");
                 (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.to_string()).into_response()
             }
         }
+    }
+}
+impl From<rusqlite::Error> for AuthError {
+    fn from(value: rusqlite::Error) -> Self {
+        AuthError::DatabaseError(DatabaseError::from(value))
     }
 }
 

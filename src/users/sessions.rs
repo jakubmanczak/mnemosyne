@@ -9,7 +9,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
-    ISE_MSG, database,
+    database::{self, DatabaseError},
     users::{User, auth},
 };
 
@@ -34,10 +34,10 @@ pub enum SessionStatus {
     },
 }
 
-#[derive(Debug, thiserror::Error, Serialize)]
+#[derive(Debug, thiserror::Error)]
 pub enum SessionError {
     #[error("Database error: {0}")]
-    DatabaseError(String),
+    DatabaseError(#[from] DatabaseError),
     #[error("No session found with id: {0}")]
     NoSessionWithId(Uuid),
     #[error("No session found with token: {0}")]
@@ -45,20 +45,18 @@ pub enum SessionError {
 }
 impl From<rusqlite::Error> for SessionError {
     fn from(error: rusqlite::Error) -> Self {
-        SessionError::DatabaseError(error.to_string())
+        SessionError::DatabaseError(DatabaseError::from(error))
     }
 }
 impl IntoResponse for SessionError {
     fn into_response(self) -> Response {
         match self {
-            Self::DatabaseError(e) => {
-                log::error!("[ERROR] Database error occured: {e}");
-                (StatusCode::INTERNAL_SERVER_ERROR, ISE_MSG.into())
+            Self::DatabaseError(e) => e.into_response(),
+            Self::NoSessionWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
+            Self::NoSessionWithToken(_) => {
+                (StatusCode::BAD_REQUEST, self.to_string()).into_response()
             }
-            Self::NoSessionWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::NoSessionWithToken(_) => (StatusCode::BAD_REQUEST, self.to_string()),
         }
-        .into_response()
     }
 }
 
