@@ -19,6 +19,7 @@ use crate::{
 
 const CANT_CHANGE_OTHERS_HANDLE: &str = "You don't have permission to change this user's handle.";
 const CANT_CHANGE_OTHERS_PASSW: &str = "You don't have permission to change this user's password.";
+const CANT_MANUALLY_MAKE_USERS: &str = "You don't have permission to manually create new users.";
 const HANDLE_CHANGED_SUCCESS: &str = "Handle changed successfully.";
 const PASSW_CHANGED_SUCCESS: &str = "Password changed successfully.";
 
@@ -42,14 +43,29 @@ pub async fn get_by_handle(
     Ok(Json(User::get_by_handle(handle)?).into_response())
 }
 
+pub async fn get_all(headers: HeaderMap) -> Result<Response, CompositeError> {
+    User::authenticate(&headers)?.required()?;
+    Ok(Json(User::get_all()?).into_response())
+}
+
 #[derive(Deserialize)]
-pub struct ChangeHandleForm {
+pub struct HandleForm {
     handle: UserHandle,
+}
+pub async fn create(
+    headers: HeaderMap,
+    Json(form): Json<HandleForm>,
+) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    if !u.has_permission(Permission::ManuallyCreateUsers)? {
+        return Ok((StatusCode::FORBIDDEN, CANT_MANUALLY_MAKE_USERS).into_response());
+    }
+    Ok(Json(User::create(form.handle)?).into_response())
 }
 pub async fn change_handle(
     Path(id): Path<Uuid>,
     headers: HeaderMap,
-    Json(form): Json<ChangeHandleForm>,
+    Json(form): Json<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut target = if u.id == id {

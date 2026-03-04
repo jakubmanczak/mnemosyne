@@ -74,6 +74,26 @@ impl User {
             None => Err(UserError::NoUserWithHandle(handle)),
         }
     }
+    pub fn get_all() -> Result<Vec<User>, UserError> {
+        Ok(database::conn()?
+            .prepare("SELECT id, handle FROM users")?
+            .query_map((), |r| {
+                Ok(User {
+                    id: r.get(0)?,
+                    handle: r.get(1)?,
+                })
+            })?
+            .collect::<Result<Vec<User>, _>>()?)
+    }
+
+    pub fn create(handle: UserHandle) -> Result<User, UserError> {
+        let conn = database::conn()?;
+        let id = Uuid::now_v7();
+        conn.prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
+            .execute((&id, &handle))?;
+        Ok(User { id, handle })
+    }
+
     pub fn set_handle(&mut self, new_handle: UserHandle) -> Result<(), UserError> {
         let conn = database::conn()?;
         conn.prepare("UPDATE users SET handle = ?1 WHERE id = ?2")?

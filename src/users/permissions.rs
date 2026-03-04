@@ -10,6 +10,7 @@ pub enum Permission {
     ChangeOthersPasswords,
     // All Users have the right to change their own handle
     ChangeOthersHandles,
+    ManuallyCreateUsers,
 }
 
 impl User {
