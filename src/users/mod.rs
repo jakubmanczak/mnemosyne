@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use rusqlite::{ErrorCode, OptionalExtension};
+use rusqlite::{OptionalExtension, ffi::SQLITE_CONSTRAINT_UNIQUE};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -35,8 +35,8 @@ pub enum UserError {
     NoUserWithId(Uuid),
     #[error("No user found with handle {0}")]
     NoUserWithHandle(UserHandle),
-    #[error("A user with handle {0} already exists")]
-    HandleAlreadyExists(UserHandle),
+    #[error("A user with this handle already exists")]
+    HandleAlreadyExists,
     #[error("{0}")]
     DatabaseError(#[from] DatabaseError),
     #[error("Argon2 passhash error: {0}")]
@@ -77,15 +77,7 @@ impl User {
     pub fn set_handle(&mut self, new_handle: UserHandle) -> Result<(), UserError> {
         let conn = database::conn()?;
         conn.prepare("UPDATE users SET handle = ?1 WHERE id = ?2")?
-            .execute((&new_handle, self.id))
-            .map_err(|e| {
-                if let Some(e) = e.sqlite_error()
-                    && e.code == ErrorCode::ConstraintViolation
-                {
-                    return UserError::HandleAlreadyExists(new_handle.clone());
-                }
-                UserError::from(e)
-            })?;
+            .execute((&new_handle, self.id))?;
         self.handle = new_handle;
         Ok(())
     }
@@ -157,7 +149,7 @@ impl User {
         log::info!("[USERS] The infradmin account password has been (re)generated.");
         log::info!("[USERS] Handle: {}", self.handle.as_str());
         log::info!("[USERS] Password: {}", passw);
-        log::info!("[USERS] The infradmin is urged to change this password to a secure one.\n");
+        log::info!("[USERS] The infradmin is urged to change this password to a secure one.");
         Ok(())
     }
 
@@ -192,6 +184,12 @@ impl User {
 
 impl From<rusqlite::Error> for UserError {
     fn from(error: rusqlite::Error) -> Self {
+        if let rusqlite::Error::SqliteFailure(err, Some(msg)) = &error
+            && err.extended_code == SQLITE_CONSTRAINT_UNIQUE
+            && msg.contains("handle")
+        {
+            return UserError::HandleAlreadyExists;
+        }
         UserError::DatabaseError(DatabaseError::from(error))
     }
 }
@@ -213,9 +211,7 @@ impl IntoResponse for UserError {
             Self::NoUserWithHandle(_) => {
                 (StatusCode::BAD_REQUEST, self.to_string()).into_response()
             }
-            Self::HandleAlreadyExists(_) => {
-                (StatusCode::CONFLICT, self.to_string()).into_response()
-            }
+            Self::HandleAlreadyExists => (StatusCode::CONFLICT, self.to_string()).into_response(),
         }
     }
 }
