@@ -1,7 +1,7 @@
 use axum::{
     Json,
     extract::Path,
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
 use serde::Deserialize;
@@ -13,8 +13,11 @@ use crate::{
     users::{
         User,
         auth::{UserAuthRequired, UserAuthenticate},
+        permissions::Permission,
     },
 };
+
+const CANT_MAKE_TAGS: &str = "You don't have permission to create new tags.";
 
 pub async fn get_all(headers: HeaderMap) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
@@ -45,6 +48,9 @@ pub async fn create(
     headers: HeaderMap,
     Json(form): Json<NewTag>,
 ) -> Result<Response, CompositeError> {
-    User::authenticate(&headers)?.required()?;
+    let u = User::authenticate(&headers)?.required()?;
+    if !u.has_permission(Permission::CreateTags)? {
+        return Ok((StatusCode::FORBIDDEN, CANT_MAKE_TAGS).into_response());
+    }
     Ok(Json(Tag::create(form.name)?).into_response())
 }
