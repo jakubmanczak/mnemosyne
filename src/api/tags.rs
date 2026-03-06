@@ -18,6 +18,8 @@ use crate::{
 };
 
 const CANT_MAKE_TAGS: &str = "You don't have permission to create new tags.";
+const CANT_DEL_TAGS: &str = "You don't have permission to delete tags.";
+const TAG_DELETED: &str = "Tag deleted successfully.";
 
 pub async fn get_all(headers: HeaderMap) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
@@ -53,4 +55,13 @@ pub async fn create(
         return Ok((StatusCode::FORBIDDEN, CANT_MAKE_TAGS).into_response());
     }
     Ok(Json(Tag::create(form.name)?).into_response())
+}
+
+pub async fn delete(Path(id): Path<Uuid>, headers: HeaderMap) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    if !u.has_permission(Permission::DeleteTags)? {
+        return Ok((StatusCode::FORBIDDEN, CANT_DEL_TAGS).into_response());
+    }
+    Tag::get_by_id(id)?.delete()?;
+    Ok((StatusCode::OK, TAG_DELETED).into_response())
 }

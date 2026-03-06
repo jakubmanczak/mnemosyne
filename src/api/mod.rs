@@ -1,7 +1,7 @@
 use axum::{
     Router,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 
 use crate::{
@@ -36,6 +36,7 @@ pub fn api_router() -> Router {
         .route("/api/tags", get(tags::get_all))
         .route("/api/tags", post(tags::create))
         .route("/api/tags/{id}", get(tags::get_by_id))
+        .route("/api/tags/{id}", delete(tags::delete))
         .route("/api/tags/#{name}", get(tags::get_by_name))
 }
 

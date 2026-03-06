@@ -69,6 +69,12 @@ impl Tag {
             .execute((id, &name))?;
         Ok(Tag { id, name })
     }
+    pub fn delete(self) -> Result<(), TagError> {
+        database::conn()?
+            .prepare("DELETE FROM tags WHERE id = ?1")?
+            .execute((self.id,))?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
