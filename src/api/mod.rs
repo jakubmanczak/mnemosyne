@@ -33,6 +33,8 @@ pub fn api_router() -> Router {
         .route("/api/sessions/{id}", get(sessions::get_by_id))
         .route("/api/sessions/{id}/revoke", post(sessions::revoke_by_id))
         //
+        .route("/api/tags", get(tags::get_all))
+        .route("/api/tags", post(tags::create))
         .route("/api/tags/{id}", get(tags::get_by_id))
         .route("/api/tags/#{name}", get(tags::get_by_name))
 }

@@ -6,6 +6,7 @@ use axum::{
 };
 use rusqlite::{
     OptionalExtension, Result as RusqliteResult, ToSql,
+    ffi::SQLITE_CONSTRAINT_UNIQUE,
     types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
 };
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,17 @@ pub struct Tag {
 }
 
 impl Tag {
+    pub fn get_all() -> Result<Vec<Tag>, TagError> {
+        Ok(database::conn()?
+            .prepare("SELECT id, tagname FROM tags")?
+            .query_map((), |r| {
+                Ok(Tag {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                })
+            })?
+            .collect::<Result<Vec<Tag>, _>>()?)
+    }
     pub fn get_by_id(id: Uuid) -> Result<Tag, TagError> {
         let res = database::conn()?
             .prepare("SELECT tagname FROM tags WHERE id = ?1")?
@@ -50,6 +62,13 @@ impl Tag {
             None => Err(TagError::NoTagWithName(name)),
         }
     }
+    pub fn create(name: TagName) -> Result<Tag, TagError> {
+        let id = Uuid::now_v7();
+        database::conn()?
+            .prepare("INSERT INTO tags(id, tagname) VALUES (?1, ?2)")?
+            .execute((id, &name))?;
+        Ok(Tag { id, name })
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -60,11 +79,19 @@ pub enum TagError {
     NoTagWithId(Uuid),
     #[error("No tag found with name {0}")]
     NoTagWithName(TagName),
+    #[error("A tag with this name already exists")]
+    TagAlreadyExists,
     #[error("Database error: {0}")]
     DatabaseError(#[from] DatabaseError),
 }
 impl From<rusqlite::Error> for TagError {
     fn from(error: rusqlite::Error) -> Self {
+        if let rusqlite::Error::SqliteFailure(e, Some(msg)) = &error
+            && e.extended_code == SQLITE_CONSTRAINT_UNIQUE
+            && msg.contains("tagname")
+        {
+            return TagError::TagAlreadyExists;
+        }
         TagError::DatabaseError(DatabaseError::from(error))
     }
 }
@@ -72,6 +99,7 @@ impl IntoResponse for TagError {
     fn into_response(self) -> Response {
         match self {
             Self::DatabaseError(e) => e.into_response(),
+            Self::TagAlreadyExists => (StatusCode::CONFLICT, self.to_string()).into_response(),
             Self::TagNameError(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::NoTagWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::NoTagWithName(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),

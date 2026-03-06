@@ -11,6 +11,7 @@ pub enum Permission {
     // All Users have the right to change their own handle
     ChangeOthersHandles,
     ManuallyCreateUsers,
+    CreateTags,
 }
 
 impl User {
