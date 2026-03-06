@@ -12,6 +12,7 @@ pub enum Permission {
     ChangeOthersHandles,
     ManuallyCreateUsers,
     CreateTags,
+    RenameTags,
     DeleteTags,
 }
 

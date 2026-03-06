@@ -19,6 +19,7 @@ use crate::{
 
 const CANT_MAKE_TAGS: &str = "You don't have permission to create new tags.";
 const CANT_DEL_TAGS: &str = "You don't have permission to delete tags.";
+const CANT_RENAME_TAGS: &str = "You don't have permission to rename tags.";
 const TAG_DELETED: &str = "Tag deleted successfully.";
 
 pub async fn get_all(headers: HeaderMap) -> Result<Response, CompositeError> {
@@ -43,18 +44,32 @@ pub async fn get_by_name(
 }
 
 #[derive(Deserialize)]
-pub struct NewTag {
+pub struct TagNameForm {
     name: TagName,
 }
 pub async fn create(
     headers: HeaderMap,
-    Json(form): Json<NewTag>,
+    Json(form): Json<TagNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     if !u.has_permission(Permission::CreateTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_MAKE_TAGS).into_response());
     }
     Ok(Json(Tag::create(form.name)?).into_response())
+}
+
+pub async fn rename(
+    Path(id): Path<Uuid>,
+    headers: HeaderMap,
+    Json(form): Json<TagNameForm>,
+) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    if !u.has_permission(Permission::RenameTags)? {
+        return Ok((StatusCode::FORBIDDEN, CANT_RENAME_TAGS).into_response());
+    }
+    let mut tag = Tag::get_by_id(id)?;
+    tag.rename(form.name)?;
+    Ok(Json(tag).into_response())
 }
 
 pub async fn delete(Path(id): Path<Uuid>, headers: HeaderMap) -> Result<Response, CompositeError> {

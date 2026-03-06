@@ -69,6 +69,13 @@ impl Tag {
             .execute((id, &name))?;
         Ok(Tag { id, name })
     }
+    pub fn rename(&mut self, name: TagName) -> Result<(), TagError> {
+        database::conn()?
+            .prepare("UPDATE tags SET tagname = ?1 WHERE id = ?2")?
+            .execute((&name, self.id))?;
+        self.name = name;
+        Ok(())
+    }
     pub fn delete(self) -> Result<(), TagError> {
         database::conn()?
             .prepare("DELETE FROM tags WHERE id = ?1")?
