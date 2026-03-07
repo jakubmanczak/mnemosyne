@@ -8,7 +8,7 @@ macro_rules! migration {
         ($name, include_str!(concat!("./migrations/", $name, ".sql")))
     };
 }
-const MIGRATIONS: &[(&str, &str)] = &[migration!("2026-02-20--01")];
+const MIGRATIONS: &[(&str, &str)] = &[migration!("2026-03-07--01")];
 
 pub static DB_URL: LazyLock<String> =
     LazyLock::new(|| env::var("DATABASE_URL").expect("DATABASE_URL is not set"));

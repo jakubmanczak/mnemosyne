@@ -20,18 +20,9 @@ CREATE TABLE sessions (
 );
 CREATE INDEX sessions_by_userid ON sessions(user_id);
 
--- CREATE TABLE logs (
---     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
---     actor       BLOB NOT NULL REFERENCES users(id), -- UUIDv7 as bytes
---     -- (userID with special cases: UUID::nil if system, UUID::max if infradmin)
---     -- ((infradmin & system shall both be users))
---     target      BLOB, -- Option<UUIDv7 as bytes (userID)>
---     change      TEXT NOT NULL
--- );
-
 CREATE TABLE quotes (
     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
-    timestamp   TEXT NOT NULL, -- RFC3339 into DateTime<Utc>
+    timestamp   TEXT NOT NULL, -- RFC3339 into DateTime<FixedOffset>
     location    TEXT,
     context     TEXT,
     created_by  BLOB NOT NULL REFERENCES users(id), -- UUIDv7 as bytes
@@ -84,6 +75,15 @@ CREATE TABLE quote_tags (
     PRIMARY KEY (quote_id, tag_id)
 ) WITHOUT ROWID;
 CREATE INDEX quote_tags_reverse_index ON quote_tags(tag_id, quote_id);
+
+-- CREATE TABLE logs (
+--     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
+--     actor       BLOB NOT NULL REFERENCES users(id), -- UUIDv7 as bytes
+--     -- (userID with special cases: UUID::nil if system, UUID::max if infradmin)
+--     -- ((infradmin & system shall both be users))
+--     target      BLOB, -- Option<UUIDv7 as bytes (userID)>
+--     change      TEXT NOT NULL
+-- );
 
 -- all this to be followed by:
 -- - a better access scoping mechanism (role-based like discord)
