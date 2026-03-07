@@ -1,9 +1,13 @@
 /target
 .DS_Store
+/database
 *.db
 *.db-shm
 *.db-wal
 *.db3
 *.db3-shm
 *.db3-wal
+*.shm
+*.wal
+*.nal
 *.env
