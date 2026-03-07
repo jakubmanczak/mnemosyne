@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::persons::{Person, names::Name};
+use crate::persons::{Name, Person};
 
 #[allow(unused)]
 pub struct QuoteLine {

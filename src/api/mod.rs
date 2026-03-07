@@ -6,11 +6,13 @@ use axum::{
 
 use crate::{
     database::DatabaseError,
+    persons::PersonError,
     tags::TagError,
     users::{UserError, auth::AuthError, sessions::SessionError},
 };
 
 mod auth;
+mod persons;
 mod sessions;
 mod tags;
 mod users;
@@ -39,6 +41,14 @@ pub fn api_router() -> Router {
         .route("/api/tags/{id}", patch(tags::rename))
         .route("/api/tags/{id}", delete(tags::delete))
         .route("/api/tags/#{name}", get(tags::get_by_name))
+        //
+        .route("/api/persons", get(persons::get_all))
+        .route("/api/persons", post(persons::create))
+        .route("/api/persons/{id}", get(persons::get_by_id))
+        .route("/api/persons/{id}/names", get(persons::pid_names))
+        .route("/api/persons/{id}/addname", post(persons::add_name))
+        .route("/api/names/{id}", get(persons::n_by_id))
+        .route("/api/names/{id}/setprimary", post(persons::n_setprimary))
 }
 
 pub struct CompositeError(Response);
@@ -59,4 +69,11 @@ macro_rules! composite_from {
         )+
     };
 }
-composite_from!(AuthError, UserError, SessionError, TagError, DatabaseError);
+composite_from!(
+    AuthError,
+    UserError,
+    SessionError,
+    TagError,
+    PersonError,
+    DatabaseError
+);
