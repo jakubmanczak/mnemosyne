@@ -28,15 +28,17 @@ pub async fn page(Query(q): Query<LoginMsg>, req: Request) -> Result<Response, A
     Ok(base(
         "Log in | Mnemosyne",
         html!(
-            div class="min-h-screen flex flex-col" {
-                (marquee(&["the goddess of memory"]))
+            div class="min-h-screen flex flex-col items-center overflow-x-hidden" {
+                div class="overflow-hidden"{(marquee(&["the goddess of memory"]))}
 
                 div class="mt-24" {}
-                a href="/" class="font-semibold text-6xl mx-auto font-lora hover:underline" {h1 {"Mnemosyne"}}
-                p class="text-neutral-500 mt-4 text-sm mx-auto mb-16" {"The goddess of memory holds all the cards."}
+                a href="/" class="font-semibold text-4xl sm:text-6xl mx-auto font-lora hover:underline" {h1 {"Mnemosyne"}}
+                p class="text-neutral-500 mt-4 hidden sm:block text-sm mx-auto" {"The goddess of memory holds all the cards."}
+                div class="mb-16" {}
 
-                div class="mx-auto bg-neutral-200/5 border border-neutral-200/25 p-4 rounded" {
-                    p class="text-neutral-500" {"Part of the olympic pack already? Log in here."}
+                div class="bg-neutral-200/5 w-4/5 mx-2 sm:mx-0 sm:w-fit border border-neutral-200/25 p-4 rounded" {
+                    p class="text-neutral-500 hidden sm:block" {"Part of the olympic pack already? Log in here."}
+                    p class="block sm:hidden px-2 w-full text-center text-neutral-500" {"Log in here, olympian."}
 
                     form id="login-form" method="post" action="/api/auth/login-form" class="mt-8 font-light flex flex-col"  {
                         label for="handle" class="text-neutral-500" {"Handle"}
@@ -102,7 +104,7 @@ pub async fn page(Query(q): Query<LoginMsg>, req: Request) -> Result<Response, A
                 }
 
                 div class="mt-auto" {}
-                (marquee(&[REFERENCE_SPLASHES.choose(&mut rand::rng()).unwrap()]))
+                div class="overflow-hidden"{(marquee(&[REFERENCE_SPLASHES.choose(&mut rand::rng()).unwrap()]))}
             }
         ),
     ).into_response())

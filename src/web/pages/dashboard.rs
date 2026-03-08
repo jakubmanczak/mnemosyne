@@ -13,7 +13,7 @@ pub async fn page(req: Request) -> Markup {
         html!(
             (nav(u, req.uri().path()))
 
-            div class="text-8xl text-neutral-800/25 mt-16 text-center font-semibold font-lora select-none" {"Mnemosyne"}
+            div class="text-6xl sm:text-8xl text-neutral-800/25 mt-16 text-center font-semibold font-lora select-none overflow-hidden" {"Mnemosyne"}
         ),
     )
 }
