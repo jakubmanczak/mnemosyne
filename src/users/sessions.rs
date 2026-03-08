@@ -1,5 +1,5 @@
 use axum::{
-    http::StatusCode,
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use chrono::{DateTime, Duration, Utc};
@@ -10,7 +10,10 @@ use uuid::Uuid;
 
 use crate::{
     database::{self, DatabaseError},
-    users::{User, auth},
+    users::{
+        User,
+        auth::{self, COOKIE_NAME},
+    },
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,7 +43,7 @@ pub enum SessionError {
     DatabaseError(#[from] DatabaseError),
     #[error("No session found with id: {0}")]
     NoSessionWithId(Uuid),
-    #[error("No session found with token: {0}")]
+    #[error("No session found with provided token")]
     NoSessionWithToken(String),
 }
 impl From<rusqlite::Error> for SessionError {
@@ -54,7 +57,13 @@ impl IntoResponse for SessionError {
             Self::DatabaseError(e) => e.into_response(),
             Self::NoSessionWithId(_) => (StatusCode::BAD_REQUEST, self.to_string()).into_response(),
             Self::NoSessionWithToken(_) => {
-                (StatusCode::BAD_REQUEST, self.to_string()).into_response()
+                let cookie = format!("{COOKIE_NAME}=revoking; Path=/; HttpOnly; Max-Age=0");
+                (
+                    StatusCode::BAD_REQUEST,
+                    [(header::SET_COOKIE, cookie)],
+                    self.to_string(),
+                )
+                    .into_response()
             }
         }
     }

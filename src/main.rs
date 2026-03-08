@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use axum::Router;
 use tokio::net::TcpListener;
 
 mod api;
@@ -9,6 +10,7 @@ mod persons;
 mod quotes;
 mod tags;
 mod users;
+mod web;
 
 /// Mnemosyne, the mother of the nine muses
 const DEFAULT_PORT: u16 = 0x9999; // 39321
@@ -40,7 +42,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             _ => return Err(e)?,
         },
     };
-    let r = api::api_router();
+    let r = Router::new()
+        .merge(api::api_router())
+        .merge(web::web_router());
     let l = TcpListener::bind(format!("0.0.0.0:{port}")).await?;
     log::info!("Listener bound to {}", l.local_addr()?);
 

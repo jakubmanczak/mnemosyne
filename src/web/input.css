@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+    --color-chocolatebg: oklch(0.2 0.01 50);
+    --color-offwhitebg: oklch(0.97 0.005 75);
+
+    --font-lora: "Lora", ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    --font-lexend: "Lexend", sans-serif;
+
+    --animate-marquee: marquee 180s linear infinite;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-marquee {
+        animation-play-state: paused;
+    }
+}

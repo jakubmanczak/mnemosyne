@@ -24,6 +24,7 @@ pub fn api_router() -> Router {
         .route("/api/live", get(async || "Mnemosyne lives"))
         // auth
         .route("/api/auth/login", post(auth::login))
+        .route("/api/auth/login-form", post(auth::login_form))
         .route("/api/auth/logout", post(auth::logout))
         // users
         .route("/api/users", get(users::get_all))

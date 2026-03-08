@@ -1,7 +1,7 @@
 use axum::{
-    Json,
+    Form, Json,
     http::{HeaderMap, header},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
 };
 use serde::Deserialize;
 
@@ -20,10 +20,9 @@ pub struct LoginForm {
     password: String,
 }
 
-pub async fn login(Json(creds): Json<LoginForm>) -> Result<Response, AuthError> {
+fn login_common(creds: LoginForm) -> Result<(String, String), AuthError> {
     let u = authenticate_via_credentials(&creds.handle, &creds.password)?.required()?;
     let (_, token) = Session::new_for_user(&u)?;
-
     let secure = match cfg!(debug_assertions) {
         false => "; Secure",
         true => "",
@@ -33,8 +32,19 @@ pub async fn login(Json(creds): Json<LoginForm>) -> Result<Response, AuthError> 
         Session::DEFAULT_PROLONGATION.num_seconds(),
         secure
     );
-
+    Ok((token, cookie))
+}
+pub async fn login(Json(creds): Json<LoginForm>) -> Result<Response, AuthError> {
+    let (token, cookie) = login_common(creds)?;
     Ok(([(header::SET_COOKIE, cookie)], token).into_response())
+}
+pub async fn login_form(Form(creds): Form<LoginForm>) -> Result<Response, AuthError> {
+    match login_common(creds) {
+        Ok((_, cookie)) => {
+            Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/dashboard")).into_response())
+        }
+        Err(e) => Ok(Redirect::to(&format!("/login?msg={}", e.to_string())).into_response()),
+    }
 }
 
 pub async fn logout(headers: HeaderMap) -> Result<Response, AuthError> {
