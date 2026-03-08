@@ -1,10 +1,13 @@
 // Below icons sourced from https://lucide.dev
 pub const ARROW_RIGHT: &str = include_str!("arrow-right.svg");
+pub const CALENDAR_1: &str = include_str!("calendar-1.svg");
 pub const CLIPBOARD_CLOCK: &str = include_str!("clipboard-clock.svg");
 pub const CONTACT: &str = include_str!("contact.svg");
 pub const FILE_IMAGE: &str = include_str!("file-image.svg");
 pub const LAYOUT_DASHBOARD: &str = include_str!("layout-dashboard.svg");
 pub const SCROLL_TEXT: &str = include_str!("scroll-text.svg");
+pub const SERVER: &str = include_str!("server.svg");
+pub const SHIELD_USER: &str = include_str!("shield-user.svg");
 pub const TAG: &str = include_str!("tag.svg");
 pub const USER: &str = include_str!("user.svg");
 pub const USER_KEY: &str = include_str!("user-key.svg");

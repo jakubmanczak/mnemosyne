@@ -4,12 +4,14 @@ use maud::{DOCTYPE, Markup, html};
 pub mod dashboard;
 pub mod index;
 pub mod login;
+pub mod users;
 
 pub fn pages() -> Router {
     Router::new()
         .route("/", get(index::page))
         .route("/login", get(login::page))
         .route("/dashboard", get(dashboard::page))
+        .route("/users", get(users::page))
 }
 
 pub fn base(title: &str, inner: Markup) -> Markup {

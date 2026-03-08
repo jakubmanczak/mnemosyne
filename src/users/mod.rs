@@ -2,6 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use chrono::{DateTime, NaiveDate};
 use rusqlite::{OptionalExtension, ffi::SQLITE_CONSTRAINT_UNIQUE};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -100,6 +101,13 @@ impl User {
             .execute((&new_handle, self.id))?;
         self.handle = new_handle;
         Ok(())
+    }
+
+    pub fn created_at(&self) -> Option<NaiveDate> {
+        self.id
+            .get_timestamp()
+            .and_then(|ts| DateTime::from_timestamp(ts.to_unix().0 as i64, 0))
+            .map(|dt| dt.date_naive())
     }
 }
 

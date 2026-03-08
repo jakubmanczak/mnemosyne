@@ -11,7 +11,7 @@ pub async fn page(req: Request) -> Markup {
     base(
         "Dashboard | Mnemosyne",
         html!(
-            (nav(u, req.uri().path()))
+            (nav(u.as_ref(), req.uri().path()))
 
             div class="text-6xl sm:text-8xl text-neutral-800/25 mt-16 text-center font-semibold font-lora select-none overflow-hidden" {"Mnemosyne"}
         ),
