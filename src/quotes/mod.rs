@@ -38,6 +38,11 @@ pub enum QuoteError {
 }
 
 impl Quote {
+    pub fn total_count() -> Result<i64, QuoteError> {
+        let conn = database::conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM quotes", (), |r| r.get(0))?;
+        Ok(count)
+    }
     pub fn get_by_id(id: Uuid) -> Result<Quote, QuoteError> {
         let conn = database::conn()?;
 

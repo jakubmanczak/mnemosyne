@@ -21,6 +21,11 @@ pub struct Tag {
 }
 
 impl Tag {
+    pub fn total_count() -> Result<i64, TagError> {
+        let conn = database::conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM tags", (), |r| r.get(0))?;
+        Ok(count)
+    }
     pub fn get_all() -> Result<Vec<Tag>, TagError> {
         Ok(database::conn()?
             .prepare("SELECT id, tagname FROM tags")?

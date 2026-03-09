@@ -45,6 +45,11 @@ pub enum UserError {
 }
 
 impl User {
+    pub fn total_count() -> Result<i64, UserError> {
+        let conn = database::conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM users", (), |r| r.get(0))?;
+        Ok(count)
+    }
     pub fn get_by_id(id: Uuid) -> Result<User, UserError> {
         let res = database::conn()?
             .prepare("SELECT handle FROM users WHERE id = ?1")?

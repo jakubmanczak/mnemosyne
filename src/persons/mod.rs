@@ -39,6 +39,11 @@ pub enum PersonError {
 }
 
 impl Person {
+    pub fn total_count() -> Result<i64, PersonError> {
+        let conn = database::conn()?;
+        let count: i64 = conn.query_row("SELECT COUNT(*) FROM persons", (), |r| r.get(0))?;
+        Ok(count)
+    }
     pub fn get_all() -> Result<Vec<Person>, PersonError> {
         Ok(database::conn()?
             .prepare("SELECT p.id, p.created_by, n.name FROM persons p JOIN names n ON p.id = n.person_id AND n.is_primary = 1")?
