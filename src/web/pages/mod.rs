@@ -12,6 +12,7 @@ pub fn pages() -> Router {
         .route("/login", get(login::page))
         .route("/dashboard", get(dashboard::page))
         .route("/users", get(users::page))
+        .route("/users/{id}", get(users::profile::page))
 }
 
 pub fn base(title: &str, inner: Markup) -> Markup {

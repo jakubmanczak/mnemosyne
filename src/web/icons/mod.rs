@@ -3,6 +3,7 @@ pub const ARROW_RIGHT: &str = include_str!("arrow-right.svg");
 pub const CALENDAR_1: &str = include_str!("calendar-1.svg");
 pub const CLIPBOARD_CLOCK: &str = include_str!("clipboard-clock.svg");
 pub const CONTACT: &str = include_str!("contact.svg");
+pub const EYE: &str = include_str!("eye.svg");
 pub const FILE_IMAGE: &str = include_str!("file-image.svg");
 pub const INFO: &str = include_str!("info.svg");
 pub const LAYOUT_DASHBOARD: &str = include_str!("layout-dashboard.svg");

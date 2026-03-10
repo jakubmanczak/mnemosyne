@@ -16,6 +16,8 @@ use crate::{
     },
 };
 
+pub mod profile;
+
 pub async fn page(req: Request) -> Result<Response, AuthError> {
     let u = User::authenticate(req.headers())?;
     let us = match u.is_some() {
