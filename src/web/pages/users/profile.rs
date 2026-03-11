@@ -71,7 +71,7 @@ pub async fn page(Path(id): Path<Uuid>, req: Request) -> Result<Response, AuthEr
             (nav(Some(&u), req.uri().path()))
 
             // banner
-            div class="relative w-full h-48 sm:h-56 md:h-64 bg-gradient-to-b from-neutral-800 from-25% to-emerald-950 overflow-hidden" {
+            div class="relative w-full h-48 sm:h-56 md:h-64 bg-linear-to-b from-neutral-800 from-25% to-emerald-950 overflow-hidden" {
                 div class="absolute bottom-0 left-0 right-0 h-px bg-neutral-500/50 --bg-gradient-to-r --from-transparent --via-neutral-500/50 --to-transparent" {}
             }
 
@@ -113,7 +113,7 @@ pub async fn page(Path(id): Path<Uuid>, req: Request) -> Result<Response, AuthEr
                             span class="scale-[.7]" {(PreEscaped(icons::INFO))}
                             "About"
                         }
-                        div class="border border-neutral-200/15 bg-neutral-200/[.03] rounded-lg p-4" {
+                        div class="border border-neutral-200/15 bg-neutral-200/3 rounded-lg p-4" {
                             @if is_own_profile {
                                 p class="text-neutral-500 italic text-sm leading-relaxed" {
                                     "You haven't written a bio yet. Tell people a bit about yourself!"
@@ -139,7 +139,7 @@ pub async fn page(Path(id): Path<Uuid>, req: Request) -> Result<Response, AuthEr
                             span class="scale-[.7]" {(PreEscaped(icons::CLIPBOARD_CLOCK))}
                             "Details"
                         }
-                        div class="border border-neutral-200/15 bg-neutral-200/[.03] rounded-lg p-4 space-y-3" {
+                        div class="border border-neutral-200/15 bg-neutral-200/3 rounded-lg p-4 space-y-3" {
                             div {
                                 p class="text-xs text-neutral-500 uppercase tracking-wide" {"Handle"}
                                 p class="text-sm text-neutral-300 mt-0.5" {"@" (user.handle)}

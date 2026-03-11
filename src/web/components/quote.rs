@@ -18,13 +18,13 @@ pub fn quote(quote: &Quote) -> Markup {
                         p class="font-lora ml-6"{(line.content)}
                     }
                     @if show_author {
-                        p class="text-sm italic ml-3 flex flex-row gap-[6px] text-neutral-400" {
+                        p class="text-sm italic ml-3 flex flex-row gap-1.5 text-neutral-400" {
                             "— " (line.attribution.name)
                         }
                     }
                 }
             }
-            div class="flex flex-row text-neutral-400 mt-auto pt-4 text-sm items-center font-light text-xs" {
+            div class="flex flex-row text-neutral-400 mt-auto pt-4 items-center font-light text-xs" {
                 p {(quote.timestamp.format("%d/%m/%Y %H:%M"))}
                 @if let Some(loc) = &quote.location {
                     span class="ml-3 scale-[.5]"{(PreEscaped(icons::MAP_PIN))} p { (loc) }

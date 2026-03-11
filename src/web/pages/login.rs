@@ -45,7 +45,7 @@ pub async fn page(Query(q): Query<LoginMsg>, req: Request) -> Result<Response, A
                         div class="flex items-center w-full border border-neutral-200/25 rounded bg-neutral-950/50" {
                             span class="pl-2 text-neutral-500 select-none" {"@"}
                             input id="handle" name="handle" type="text"
-                                class="w-full bg-transparent pl-[2px] pr-1 py-1 outline-none";
+                                class="w-full bg-transparent pl-0.5 pr-1 py-1 outline-none";
                         }
 
                         label for="password" class="text-neutral-500 font-light mt-2" {"Password"}
