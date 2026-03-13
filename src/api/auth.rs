@@ -53,3 +53,9 @@ pub async fn logout(headers: HeaderMap) -> Result<Response, AuthError> {
     let cookie = format!("{COOKIE_NAME}=revoking; Path=/; HttpOnly; Max-Age=0");
     Ok(([(header::SET_COOKIE, cookie)], "Logged out!").into_response())
 }
+pub async fn logout_form(headers: HeaderMap) -> Result<Response, AuthError> {
+    let mut s = Session::authenticate(&headers)?.required()?;
+    s.revoke(Some(&User::get_by_id(s.user_id)?))?;
+    let cookie = format!("{COOKIE_NAME}=revoking; Path=/; HttpOnly; Max-Age=0");
+    Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/")).into_response())
+}

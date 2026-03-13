@@ -26,6 +26,7 @@ pub fn api_router() -> Router {
         .route("/api/auth/login", post(auth::login))
         .route("/api/auth/login-form", post(auth::login_form))
         .route("/api/auth/logout", post(auth::logout))
+        .route("/api/auth/logout-form", post(auth::logout_form))
         // users
         .route("/api/users", get(users::get_all))
         .route("/api/users", post(users::create))
