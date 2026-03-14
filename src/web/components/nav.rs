@@ -36,10 +36,33 @@ pub fn nav(user: Option<&User>, uri: &str) -> Markup {
 
 
             @if let Some(u) = user {
-                a href="/dashboard" class=r#"ml-auto bg-neutral-200/5 font-lexend flex
-                    flex-row items-center border border-neutral-200/25 gap-4 rounded px-2 py-1"# {
-                    span class="hidden sm:block"{(u.handle)}
-                    div class="scale-[.75]" {(PreEscaped(icons::USER))}
+                div class="ml-auto relative group" tabindex="0" id="user-dropdown-menu"
+                    aria-haspopup="menu"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); if(this.matches(':focus-within')){this.blur()}else{this.focus()} }" {
+                    div class=r#"bg-neutral-200/5 font-lexend flex
+                        flex-row items-center border border-neutral-200/25 gap-4 rounded px-2 py-1 cursor-pointer"#
+                        onmousedown="event.preventDefault(); if(this.parentElement.matches(':focus-within')){this.parentElement.blur()}else{this.parentElement.focus()}"
+                        ontouchstart="event.preventDefault(); if(this.parentElement.matches(':focus-within')){this.parentElement.blur()}else{this.parentElement.focus()}" {
+                        span class="hidden sm:block"{(u.handle)}
+                        div class="scale-[.75]" {(PreEscaped(icons::USER))}
+                    }
+                    div class="absolute right-0 top-full pt-1 w-40 opacity-0 invisible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-100 z-50" {
+                        div class="rounded bg-neutral-900 border border-neutral-200/25 shadow-lg flex flex-col overflow-hidden" {
+                            a href=(format!("/users/{}", u.id)) class="px-4 py-2 flex items-center gap-2 hover:bg-neutral-200/10 font-lexend text-sm text-neutral-200 transition-colors" {
+                                div class="scale-[.7]" {(PreEscaped(icons::USER))}
+                                p {"Profile"}
+                            }
+                            a href="/user-settings" class="px-4 py-2 flex items-center gap-2 hover:bg-neutral-200/10 font-lexend text-sm text-neutral-200 transition-colors" {
+                                div class="scale-[.7]" {(PreEscaped(icons::SERVER))}
+                                p {"Settings"}
+                            }
+                            div class="h-px w-full bg-neutral-200/15" {}
+                            a href="/api/auth/logout-form" class="w-full text-left flex items-center gap-2 px-4 py-2 hover:bg-neutral-200/10 font-lexend text-sm text-red-300 transition-colors" {
+                                div class="scale-[.7]" {(PreEscaped(icons::LOG_OUT))}
+                                p {"Log out"}
+                            }
+                        }
+                    }
                 }
             } @else {
                 a href="/login" class=r#"ml-auto bg-neutral-200/5 font-lexend flex
@@ -48,6 +71,24 @@ pub fn nav(user: Option<&User>, uri: &str) -> Markup {
                     div class="scale-[.75]" {(PreEscaped(icons::USER_KEY))}
                 }
             }
+        }
+        script {
+            (PreEscaped(r#"
+                document.addEventListener('touchstart', function(e) {
+                    const menu = document.getElementById('user-dropdown-menu');
+                    if (menu && !menu.contains(e.target) && menu.contains(document.activeElement)) {
+                        document.activeElement.blur();
+                    }
+                }, {passive: true});
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        const menu = document.getElementById('user-dropdown-menu');
+                        if (menu && menu.contains(document.activeElement)) {
+                            document.activeElement.blur();
+                        }
+                    }
+                });
+            "#))
         }
     )
 }

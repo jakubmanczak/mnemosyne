@@ -7,6 +7,7 @@ pub const EYE: &str = include_str!("eye.svg");
 pub const FILE_IMAGE: &str = include_str!("file-image.svg");
 pub const INFO: &str = include_str!("info.svg");
 pub const LAYOUT_DASHBOARD: &str = include_str!("layout-dashboard.svg");
+pub const LOG_OUT: &str = include_str!("log-out.svg");
 pub const MAP_PIN: &str = include_str!("map-pin.svg");
 pub const QUOTE: &str = include_str!("quote.svg");
 pub const SCROLL_TEXT: &str = include_str!("scroll-text.svg");
