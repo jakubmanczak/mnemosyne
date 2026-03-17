@@ -7,7 +7,7 @@ pub fn user_miniprofile(u: &User) -> Markup {
     html!(
         a href=(format!("/users/{}", u.id))
             class="w-70 border border-neutral-200/25 hover:border-neutral-200/50 bg-neutral-200/5 hover:bg-neutral-200/10 transition-colors rounded flex" {
-            div class="bg-neutral-200/10 text-neutral-300 font-semibold aspect-square flex items-center justify-center" {
+            div class="bg-neutral-200/10 text-neutral-300 font-semibold flex items-center justify-center h-full aspect-square" {
                 (u.handle.as_str().chars().next().unwrap_or('?').to_uppercase())
             }
             div class="p-3" {
