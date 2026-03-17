@@ -39,8 +39,8 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     div class="max-w-4xl mx-auto mt-4 flex gap-2" {
                         @for tag in &tags {
                             div class="rounded-full px-3 py-1 bg-neutral-200/10 border border-neutral-200/15 flex" {
-                                span class="text-neutral-400" {"#"}
-                                span {(tag.name)}
+                                span class="text-neutral-400 text-sm" {"#"}
+                                span class="text-sm" {(tag.name)}
                                 div class="w-px h-2/3 my-auto mx-2 bg-neutral-200/15" {}
                                 div class="text-xs flex items-center" {
                                     "10" span class="*:size-3 ml-1 text-neutral-400" {(PreEscaped(icons::SCROLL_TEXT))}
