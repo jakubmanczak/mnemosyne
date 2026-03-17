@@ -4,6 +4,7 @@ use maud::{DOCTYPE, Markup, html};
 pub mod dashboard;
 pub mod index;
 pub mod login;
+pub mod tags;
 pub mod users;
 
 pub fn pages() -> Router {
@@ -13,6 +14,7 @@ pub fn pages() -> Router {
         .route("/dashboard", get(dashboard::page))
         .route("/users", get(users::page))
         .route("/users/{id}", get(users::profile::page))
+        .route("/tags", get(tags::page))
 }
 
 pub fn base(title: &str, inner: Markup) -> Markup {

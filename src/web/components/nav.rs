@@ -8,7 +8,7 @@ const LINKS: &[(&str, &str, &str, bool)] = &[
     ("Quotes", "#quotes", icons::SCROLL_TEXT, false),
     ("Photos", "#photos", icons::FILE_IMAGE, false),
     ("Persons", "#persons", icons::CONTACT, false),
-    ("Tags", "#tags", icons::TAG, false),
+    ("Tags", "/tags", icons::TAG, false),
     ("Users", "/users", icons::USERS, true),
     ("Logs", "#logs", icons::CLIPBOARD_CLOCK, true),
 ];
