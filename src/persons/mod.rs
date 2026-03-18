@@ -74,6 +74,18 @@ impl Person {
         }
     }
 
+    pub fn get_in_quote_count(&self) -> Result<i64, PersonError> {
+        Ok(database::conn()?
+            .prepare(
+                r#"
+            SELECT COUNT(DISTINCT l.quote_id) AS quote_count
+            FROM lines l WHERE l.name_id IN (
+                SELECT id FROM names WHERE person_id = ?1
+            );"#,
+            )?
+            .query_one((self.id,), |r| Ok(r.get(0)?))?)
+    }
+
     pub fn get_all_names(&self) -> Result<Vec<Name>, PersonError> {
         Ok(database::conn()?
             .prepare("SELECT id, is_primary, person_id, created_by, name FROM names WHERE person_id = ?1")?

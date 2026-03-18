@@ -52,6 +52,11 @@ impl Tag {
             None => Err(TagError::NoTagWithId(id)),
         }
     }
+    pub fn get_tagged_quotes_count(&self) -> Result<i64, TagError> {
+        Ok(database::conn()?
+            .prepare("SELECT COUNT(*) FROM quote_tags WHERE tag_id = ?1")?
+            .query_one((self.id,), |r| Ok(r.get(0)?))?)
+    }
     pub fn get_by_name(name: TagName) -> Result<Tag, TagError> {
         let res = database::conn()?
             .prepare("SELECT id, tagname FROM tags WHERE tagname = ?1")?
