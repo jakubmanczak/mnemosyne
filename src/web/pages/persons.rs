@@ -39,7 +39,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     div class="max-w-4xl mx-auto mt-4 flex gap-2" {
                         @for person in &persons {
                             div class="rounded px-4 py-2 bg-neutral-200/10 border border-neutral-200/15 flex items-center" {
-                                span class="text-neutral-400 mr-1" {"~"}
+                                span class="text-neutral-400 mr-1 scale-125" {"~"}
                                 span class="text-sm" {(person.primary_name)}
                                 div class="w-px h-2/3 my-auto mx-2 bg-neutral-200/15" {}
                                 div class="text-xs flex items-center" {
