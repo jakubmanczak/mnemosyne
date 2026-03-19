@@ -8,17 +8,17 @@ pub mod dashboard;
 pub mod index;
 pub mod login;
 pub mod persons;
-pub mod settings;
 pub mod tags;
 pub mod users;
+pub mod usersettings;
 
 pub fn pages() -> Router {
     Router::new()
         .route("/", get(index::page))
         .route("/login", get(login::page))
         .route("/dashboard", get(dashboard::page))
-        .route("/user-settings", get(settings::page))
-        .route("/user-settings/handle", post(settings::change_handle))
+        .route("/user-settings", get(usersettings::page))
+        .route("/user-settings/handle", post(usersettings::change_handle))
         .route("/users", get(users::page))
         .route("/users/{id}", get(users::profile::page))
         .route("/tags", get(tags::page))
