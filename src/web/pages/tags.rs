@@ -1,14 +1,18 @@
 use axum::{
+    Form,
     extract::Request,
-    response::{IntoResponse, Response},
+    http::HeaderMap,
+    response::{IntoResponse, Redirect, Response},
 };
 use maud::{PreEscaped, html};
+use serde::Deserialize;
 
 use crate::{
-    tags::Tag,
+    api::CompositeError,
+    tags::{Tag, TagName},
     users::{
         User,
-        auth::{AuthError, UserAuthenticate},
+        auth::{AuthError, UserAuthRequired, UserAuthenticate},
     },
     web::{components::nav::nav, icons, pages::base},
 };
@@ -36,7 +40,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     }
                 }
                 @if let Ok(tags) = Tag::get_all() {
-                    div class="max-w-4xl mx-auto mt-4 flex gap-2" {
+                    div class="max-w-4xl mx-auto mt-4 flex flex-wrap gap-2" {
                         @for tag in &tags {
                             div class="rounded-full px-3 py-1 bg-neutral-200/10 border border-neutral-200/15 flex" {
                                 span class="text-neutral-400 text-sm" {"#"}
@@ -59,6 +63,18 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     @if tags.is_empty() {
                         p class="text-center p-2" {"No tags yet. How about making one?"}
                     }
+                    div class="mx-auto max-w-4xl mt-4 px-2" {
+                        h3 class="font-lora font-semibold text-xl" {"Add new tag"}
+                        form action="/tags/create" method="post" {
+                            label for="tagname" class="text-neutral-500 font-light mt-2" {"Tag Name"}
+                            div class="flex gap-2" {
+                                input type="text" autocomplete="off" id="tagname" name="tagname" placeholder="e.g. fashion"
+                                class="px-2 py-1 border border-neutral-200/25 bg-neutral-950/50 rounded";
+                                button type="submit"
+                                    class="px-4 py-1 border border-neutral-200/25 bg-neutral-200/5 rounded cursor-pointer hover:border-neutral-200/40" {"Submit"}
+                            }
+                        }
+                    }
                 } @else {
                     p class="text-red-400 text-center" {"Failed to load tags."}
                 }
@@ -68,4 +84,17 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
         ),
     )
     .into_response())
+}
+
+#[derive(Deserialize)]
+pub struct TagForm {
+    tagname: TagName,
+}
+pub async fn create(
+    headers: HeaderMap,
+    Form(form): Form<TagForm>,
+) -> Result<Response, CompositeError> {
+    User::authenticate(&headers)?.required()?;
+    Tag::create(form.tagname)?;
+    Ok(Redirect::to("/tags").into_response())
 }

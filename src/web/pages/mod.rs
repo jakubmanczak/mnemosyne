@@ -22,6 +22,7 @@ pub fn pages() -> Router {
         .route("/users", get(users::page))
         .route("/users/{id}", get(users::profile::page))
         .route("/tags", get(tags::page))
+        .route("/tags/create", post(tags::create))
         .route("/persons", get(persons::page))
         .route("/persons/create", post(persons::create))
 }
