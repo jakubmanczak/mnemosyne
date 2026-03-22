@@ -23,6 +23,7 @@ pub fn pages() -> Router {
         .route("/users/{id}", get(users::profile::page))
         .route("/tags", get(tags::page))
         .route("/persons", get(persons::page))
+        .route("/persons/create", post(persons::create))
 }
 
 pub fn base(title: &str, inner: Markup) -> Markup {

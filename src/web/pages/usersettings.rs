@@ -26,8 +26,8 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
             (nav(u.as_ref(), req.uri().path()))
 
             @if let Some(u) = u {
-                div class="max-w-4xl mx-auto p-2" {
-                    div class="mx-auto max-w-4xl px-2 my-4" {
+                div class="max-w-4xl mx-auto px-2" {
+                    div class="mx-auto max-w-4xl my-4" {
                         p class="flex items-center gap-2" {
                             span class="text-neutral-500" {(PreEscaped(icons::SERVER))}
                             span class="text-2xl font-semibold font-lora" {"Your User Settings"}

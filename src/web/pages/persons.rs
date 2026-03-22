@@ -1,14 +1,18 @@
 use axum::{
+    Form,
     extract::Request,
-    response::{IntoResponse, Response},
+    http::HeaderMap,
+    response::{IntoResponse, Redirect, Response},
 };
 use maud::{PreEscaped, html};
+use serde::Deserialize;
 
 use crate::{
+    api::CompositeError,
     persons::Person,
     users::{
         User,
-        auth::{AuthError, UserAuthenticate},
+        auth::{AuthError, UserAuthRequired, UserAuthenticate},
     },
     web::{components::nav::nav, icons, pages::base},
 };
@@ -36,7 +40,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     }
                 }
                 @if let Ok(persons) = Person::get_all() {
-                    div class="max-w-4xl mx-auto mt-4 flex gap-2" {
+                    div class="max-w-4xl mx-auto px-2 mt-4 flex flex-wrap gap-2" {
                         @for person in &persons {
                             div class="rounded px-4 py-2 bg-neutral-200/10 border border-neutral-200/15 flex items-center" {
                                 span class="text-neutral-400 mr-1 scale-125" {"~"}
@@ -59,6 +63,18 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     @if persons.is_empty() {
                         p class="text-center p-2" {"No persons yet."}
                     }
+                    div class="mx-auto max-w-4xl mt-4 px-2" {
+                        h3 class="font-lora font-semibold text-xl" {"Add new person"}
+                        form action="/persons/create" method="post" {
+                            label for="primary_name" class="text-neutral-500 font-light mt-2" {"Primary Name"}
+                            div class="flex gap-2" {
+                                input type="text" autocomplete="off" id="primary_name" name="primary_name" placeholder="e.g. Frank"
+                                class="px-2 py-1 border border-neutral-200/25 bg-neutral-950/50 rounded";
+                                button type="submit"
+                                    class="px-4 py-1 border border-neutral-200/25 bg-neutral-200/5 rounded cursor-pointer hover:border-neutral-200/40" {"Submit"}
+                            }
+                        }
+                    }
                 } @else {
                     p class="text-red-400 text-center" {"Failed to load persons."}
                 }
@@ -68,4 +84,17 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
         ),
     )
     .into_response())
+}
+
+#[derive(Deserialize)]
+pub struct PersonNameForm {
+    primary_name: String,
+}
+pub async fn create(
+    headers: HeaderMap,
+    Form(form): Form<PersonNameForm>,
+) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    Person::create(form.primary_name, u.id)?;
+    Ok(Redirect::to("/persons").into_response())
 }
