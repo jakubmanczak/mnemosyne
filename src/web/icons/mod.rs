@@ -16,4 +16,5 @@ pub const SHIELD_USER: &str = include_str!("shield-user.svg");
 pub const TAG: &str = include_str!("tag.svg");
 pub const USER: &str = include_str!("user.svg");
 pub const USER_KEY: &str = include_str!("user-key.svg");
+pub const USER_PLUS: &str = include_str!("user-plus.svg");
 pub const USERS: &str = include_str!("users.svg");

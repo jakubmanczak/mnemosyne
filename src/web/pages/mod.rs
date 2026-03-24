@@ -21,6 +21,8 @@ pub fn pages() -> Router {
         .route("/user-settings/handle", post(usersettings::change_handle))
         .route("/users", get(users::page))
         .route("/users/{id}", get(users::profile::page))
+        .route("/users/create", get(users::create::page))
+        .route("/users/create-form", post(users::create::create_user))
         .route("/tags", get(tags::page))
         .route("/tags/create", post(tags::create))
         .route("/persons", get(persons::page))

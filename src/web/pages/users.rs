@@ -8,6 +8,7 @@ use crate::{
     users::{
         User,
         auth::{AuthError, UserAuthenticate},
+        permissions::Permission,
     },
     web::{
         components::{nav::nav, user_miniprofile::user_miniprofile},
@@ -16,6 +17,7 @@ use crate::{
     },
 };
 
+pub mod create;
 pub mod profile;
 
 pub async fn page(req: Request) -> Result<Response, AuthError> {
@@ -30,7 +32,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
         html!(
             (nav(u.as_ref(), req.uri().path()))
 
-            @if let Some(_) = u {
+            @if let Some(u) = u {
                 div class="mx-auto max-w-4xl px-2 my-4" {
                     p class="flex items-center gap-2" {
                         span class="text-neutral-500" {(PreEscaped(icons::USERS))}
@@ -39,6 +41,14 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                     p class="text-neutral-500 text-sm font-light" {
                         @if let Ok(v) = &us {
                             (v.len()) " users registered with Mnemosyne."
+                        } @else {
+                            "Could not fetch user count."
+                        }
+                        @if let Ok(true) = u.has_permission(Permission::ManuallyCreateUsers) {
+                            " "
+                            a href="/users/create" class="text-blue-500 hover:text-blue-400 hover:underline" {
+                                "Create a new user"
+                            }
                         }
                     }
                 }
