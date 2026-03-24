@@ -41,8 +41,11 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
 
                     label for="handle" class="font-light text-neutral-500" {"Handle"}
                     form action="/user-settings/handle" method="post" class="flex gap-2" {
-                        input type="text" id="handle" name="handle" autocomplete="off" value={(u.handle)}
-                            class="px-2 py-1 border border-neutral-200/25 bg-neutral-950/50 rounded";
+                        div class="flex items-center border border-neutral-200/25 rounded bg-neutral-950/50" {
+                            span class="pl-2 text-neutral-500 select-none" {"@"}
+                            input id="handle" name="handle" type="text" autocomplete="off" value={(u.handle)}
+                                class="w-full bg-transparent pl-0.5 pr-1 py-1 outline-none";
+                        }
                         button type="submit" class="px-4 py-1 border border-neutral-200/25 bg-neutral-200/5 rounded cursor-pointer hover:border-neutral-200/40" {
                             "Save"
                         }
