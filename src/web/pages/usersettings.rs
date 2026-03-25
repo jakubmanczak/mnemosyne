@@ -50,6 +50,18 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                             "Save"
                         }
                     }
+                    hr class="mt-6 mb-4 border-neutral-600";
+                    p class="flex items-center gap-1" {
+                        span class="text-neutral-500 scale-[.8]" {(PreEscaped(icons::USER_KEY))}
+                        span class="text-lg font-semibold font-lora" {"Change Password"}
+                    }
+                    label for="password" class="font-light text-neutral-500" {"New password"}
+                    form action="/user-settings/passwd" method="post" class="flex gap-2" {
+                        input id="password" name="password" type="password" autocomplete="off" class="px-2 py-1 border border-neutral-200/25 bg-neutral-950/50 rounded";
+                        button type="submit" class="px-4 py-1 border border-neutral-200/25 bg-neutral-200/5 rounded cursor-pointer hover:border-neutral-200/40" {
+                            "Submit"
+                        }
+                    }
                 }
             } @else {
                 p class="text-center p-2" {"You must be logged in to view this page."}
@@ -69,5 +81,18 @@ pub async fn change_handle(
 ) -> Result<Response, CompositeError> {
     let mut u = User::authenticate(&headers)?.required()?;
     u.set_handle(form.handle)?;
+    Ok(Redirect::to("/user-settings").into_response())
+}
+
+#[derive(Deserialize)]
+pub struct PasswordForm {
+    password: String,
+}
+pub async fn change_password(
+    headers: HeaderMap,
+    Form(form): Form<PasswordForm>,
+) -> Result<Response, CompositeError> {
+    let mut u = User::authenticate(&headers)?.required()?;
+    u.set_password(Some(&form.password))?;
     Ok(Redirect::to("/user-settings").into_response())
 }

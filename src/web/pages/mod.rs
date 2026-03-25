@@ -19,6 +19,7 @@ pub fn pages() -> Router {
         .route("/dashboard", get(dashboard::page))
         .route("/user-settings", get(usersettings::page))
         .route("/user-settings/handle", post(usersettings::change_handle))
+        .route("/user-settings/passwd", post(usersettings::change_password))
         .route("/users", get(users::page))
         .route("/users/{id}", get(users::profile::page))
         .route("/users/create", get(users::create::page))
