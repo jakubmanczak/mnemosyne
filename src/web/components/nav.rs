@@ -57,9 +57,11 @@ pub fn nav(user: Option<&User>, uri: &str) -> Markup {
                                 p {"Settings"}
                             }
                             div class="h-px w-full bg-neutral-200/15" {}
-                            a href="/api/auth/logout-form" class="w-full text-left flex items-center gap-2 px-4 py-2 hover:bg-neutral-200/10 font-lexend text-sm text-red-300 transition-colors" {
-                                div class="scale-[.7]" {(PreEscaped(icons::LOG_OUT))}
-                                p {"Log out"}
+                            form action="/api/auth/logout-form" method="post" {
+                                button type="submit" class="w-full text-left flex items-center gap-2 px-4 py-2 hover:bg-neutral-200/10 cursor-pointer font-lexend text-sm text-red-300 transition-colors" {
+                                    div class="scale-[.7]" {(PreEscaped(icons::LOG_OUT))}
+                                    "Log out"
+                                }
                             }
                         }
                     }
