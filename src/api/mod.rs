@@ -10,6 +10,7 @@ use crate::{
     quotes::QuoteError,
     tags::TagError,
     users::{UserError, auth::AuthError, sessions::SessionError},
+    web::RedirectViaError,
 };
 
 mod auth;
@@ -83,5 +84,6 @@ composite_from!(
     TagError,
     PersonError,
     QuoteError,
-    DatabaseError
+    DatabaseError,
+    RedirectViaError
 );

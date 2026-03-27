@@ -7,6 +7,7 @@ use maud::{DOCTYPE, Markup, html};
 pub mod dashboard;
 pub mod index;
 pub mod login;
+pub mod logs;
 pub mod persons;
 pub mod tags;
 pub mod users;
@@ -28,6 +29,7 @@ pub fn pages() -> Router {
         .route("/tags/create", post(tags::create))
         .route("/persons", get(persons::page))
         .route("/persons/create", post(persons::create))
+        .route("/logs", get(logs::page))
 }
 
 pub fn base(title: &str, inner: Markup) -> Markup {

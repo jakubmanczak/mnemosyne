@@ -15,6 +15,7 @@ pub enum Permission {
     RenameTags,
     DeleteTags,
     ChangePersonPrimaryName,
+    BrowseServerLogs,
 }
 
 impl User {

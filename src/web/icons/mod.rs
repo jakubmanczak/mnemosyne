@@ -2,6 +2,7 @@
 pub const ARROW_RIGHT: &str = include_str!("arrow-right.svg");
 pub const CALENDAR_1: &str = include_str!("calendar-1.svg");
 pub const CLIPBOARD_CLOCK: &str = include_str!("clipboard-clock.svg");
+pub const CLOCK: &str = include_str!("clock.svg");
 pub const CONTACT: &str = include_str!("contact.svg");
 pub const EYE: &str = include_str!("eye.svg");
 pub const FILE_IMAGE: &str = include_str!("file-image.svg");
@@ -9,6 +10,7 @@ pub const INFO: &str = include_str!("info.svg");
 pub const LAYOUT_DASHBOARD: &str = include_str!("layout-dashboard.svg");
 pub const LOG_OUT: &str = include_str!("log-out.svg");
 pub const MAP_PIN: &str = include_str!("map-pin.svg");
+pub const PEN: &str = include_str!("pen.svg");
 pub const QUOTE: &str = include_str!("quote.svg");
 pub const SCROLL_TEXT: &str = include_str!("scroll-text.svg");
 pub const SERVER: &str = include_str!("server.svg");
