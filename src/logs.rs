@@ -14,6 +14,10 @@ pub struct LogEntry {
 pub enum LogAction {
     Initialize,
     RegenInfradmin,
+    CreateUser { id: Uuid, handle: String },
+    CreateTag { id: Uuid, name: String },
+    CreatePerson { id: Uuid, pname: String },
+    ChangeUserHandle { id: Uuid, old: String, new: String },
 }
 
 impl Display for LogAction {
@@ -21,6 +25,18 @@ impl Display for LogAction {
         match self {
             LogAction::Initialize => write!(f, "Initialized Mnemosyne."),
             LogAction::RegenInfradmin => write!(f, "Regenerated the Infradmin account."),
+            LogAction::CreateUser { id, handle } => {
+                write!(f, "Created user @{handle} (uid: {id})")
+            }
+            LogAction::CreateTag { id, name } => {
+                write!(f, "Created tag #{name} (id: {id})")
+            }
+            LogAction::CreatePerson { id, pname } => {
+                write!(f, "Created person ~{pname} (id: {id})")
+            }
+            LogAction::ChangeUserHandle { id, old, new } => {
+                write!(f, "Changed user handle @{old} -> @{new} (uid: {id})")
+            }
         }
     }
 }
