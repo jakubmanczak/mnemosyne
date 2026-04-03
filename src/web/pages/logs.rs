@@ -67,7 +67,7 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                                     .unwrap_or_else(|| "no timestamp".to_string()))
                             }
                             div class="p-2 font-light" style=(s) {(log.actor.handle)}
-                            div class="p-2 font-light" style=(s) {(log.data)}
+                            div class="p-2 font-light" style=(s) {(log.data.get_humanreadable_payload())}
                         }
                         @if true {
                             div class="p-2 col-span-3 text-center font-light text-neutral-400" {"You've reached the end of all logs."}

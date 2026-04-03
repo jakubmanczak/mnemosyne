@@ -76,14 +76,17 @@ CREATE TABLE quote_tags (
 ) WITHOUT ROWID;
 CREATE INDEX quote_tags_reverse_index ON quote_tags(tag_id, quote_id);
 
--- CREATE TABLE logs (
---     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
---     actor       BLOB NOT NULL REFERENCES users(id), -- UUIDv7 as bytes
---     -- (userID with special cases: UUID::nil if system, UUID::max if infradmin)
---     -- ((infradmin & system shall both be users))
---     target      BLOB, -- Option<UUIDv7 as bytes (userID)>
---     change      TEXT NOT NULL
--- );
+CREATE TABLE logs (
+    id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
+    actor       BLOB NOT NULL REFERENCES users(id), -- UUIDv7 as bytes
+    -- (userID with special cases: UUID::nil if system, UUID::max if infradmin)
+    -- ((infradmin & system shall both be users))
+    target      BLOB, -- Option<UUIDv7 as bytes (userID)>
+    actiontype  TEXT NOT NULL,
+    payload     TEXT
+);
+CREATE INDEX logs_by_actor ON logs(actor);
+CREATE INDEX logs_by_target ON logs(target);
 
 -- all this to be followed by:
 -- - a better access scoping mechanism (role-based like discord)

@@ -1,16 +1,35 @@
 use std::fmt::Display;
 
+use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, IntoStaticStr};
 use uuid::Uuid;
 
-use crate::users::User;
+use crate::{database, users::User};
 
+#[derive(Debug)]
 pub struct LogEntry {
     pub id: Uuid,
     pub actor: User,
     pub data: LogAction,
 }
 
-#[derive(Debug)]
+impl LogEntry {
+    pub fn new(actor: User, data: LogAction) -> Result<LogEntry, rusqlite::Error> {
+        let log = LogEntry {
+            id: Uuid::now_v7(),
+            actor,
+            data,
+        };
+        let conn = database::conn()?;
+        conn.prepare(
+            "INSERT INTO logs(id, actor, target, actiontype, payload) VALUES (?1,?2,?3,?4,?5)",
+        )?
+        .execute((&log.id, &log.actor.id, log.data.get_target_id(), "a", "b"))?;
+        Ok(log)
+    }
+}
+
+#[derive(Debug, IntoStaticStr, Serialize, Deserialize)]
 pub enum LogAction {
     Initialize,
     RegenInfradmin,
@@ -19,23 +38,31 @@ pub enum LogAction {
     CreatePerson { id: Uuid, pname: String },
     ChangeUserHandle { id: Uuid, old: String, new: String },
 }
-
-impl Display for LogAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl LogAction {
+    pub fn get_target_id(&self) -> Option<Uuid> {
         match self {
-            LogAction::Initialize => write!(f, "Initialized Mnemosyne."),
-            LogAction::RegenInfradmin => write!(f, "Regenerated the Infradmin account."),
+            Self::Initialize | Self::RegenInfradmin => None,
+            Self::CreateUser { id, .. } => Some(*id),
+            Self::CreateTag { id, .. } => Some(*id),
+            Self::CreatePerson { id, .. } => Some(*id),
+            Self::ChangeUserHandle { id, .. } => Some(*id),
+        }
+    }
+    pub fn get_humanreadable_payload(&self) -> String {
+        match self {
+            LogAction::Initialize => format!("Initialized Mnemosyne."),
+            LogAction::RegenInfradmin => format!("Regenerated the Infradmin account."),
             LogAction::CreateUser { id, handle } => {
-                write!(f, "Created user @{handle} (uid: {id})")
+                format!("Created user @{handle} (uid: {id})")
             }
             LogAction::CreateTag { id, name } => {
-                write!(f, "Created tag #{name} (id: {id})")
+                format!("Created tag #{name} (id: {id})")
             }
             LogAction::CreatePerson { id, pname } => {
-                write!(f, "Created person ~{pname} (id: {id})")
+                format!("Created person ~{pname} (id: {id})")
             }
             LogAction::ChangeUserHandle { id, old, new } => {
-                write!(f, "Changed user handle @{old} -> @{new} (uid: {id})")
+                format!("Changed user handle @{old} -> @{new} (uid: {id})")
             }
         }
     }
