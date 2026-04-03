@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    logs::{LogAction, LogEntry},
     tags::{Tag, TagName},
     users::{
         User,
@@ -94,7 +95,14 @@ pub async fn create(
     headers: HeaderMap,
     Form(form): Form<TagForm>,
 ) -> Result<Response, CompositeError> {
-    User::authenticate(&headers)?.required()?;
-    Tag::create(form.tagname)?;
+    let u = User::authenticate(&headers)?.required()?;
+    let t = Tag::create(form.tagname)?;
+    LogEntry::new(
+        u,
+        LogAction::CreateTag {
+            id: t.id,
+            name: t.name.to_string(),
+        },
+    )?;
     Ok(Redirect::to("/tags").into_response())
 }

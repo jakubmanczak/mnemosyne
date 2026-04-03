@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    logs::{LogAction, LogEntry},
     users::{
         User,
         auth::{AuthError, UserAuthRequired, UserAuthenticate},
@@ -75,5 +76,12 @@ pub async fn create_user(
     }
     let mut nu = User::create(form.handle)?;
     nu.set_password(Some(&form.password))?;
+    LogEntry::new(
+        u,
+        LogAction::CreateUser {
+            id: nu.id,
+            handle: nu.handle.as_str().to_string(),
+        },
+    )?;
     Ok(Redirect::to("/users").into_response())
 }

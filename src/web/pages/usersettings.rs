@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    logs::{LogAction, LogEntry},
     users::{
         User,
         auth::{AuthError, UserAuthRequired, UserAuthenticate},
@@ -80,7 +81,16 @@ pub async fn change_handle(
     Form(form): Form<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let mut u = User::authenticate(&headers)?.required()?;
+    let oldhandle = u.handle.as_str().to_string();
     u.set_handle(form.handle)?;
+    LogEntry::new(
+        u.clone(),
+        LogAction::ChangeUserHandle {
+            id: u.id,
+            old: oldhandle,
+            new: u.handle.as_str().to_string(),
+        },
+    )?;
     Ok(Redirect::to("/user-settings").into_response())
 }
 

@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    logs::{LogAction, LogEntry},
     persons::Person,
     users::{
         User,
@@ -95,6 +96,13 @@ pub async fn create(
     Form(form): Form<PersonNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    Person::create(form.primary_name, u.id)?;
+    let p = Person::create(form.primary_name, u.id)?;
+    LogEntry::new(
+        u,
+        LogAction::CreatePerson {
+            id: p.id,
+            pname: p.primary_name,
+        },
+    )?;
     Ok(Redirect::to("/persons").into_response())
 }
