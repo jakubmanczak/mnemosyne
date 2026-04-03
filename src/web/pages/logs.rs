@@ -3,11 +3,10 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use maud::{PreEscaped, html};
-use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
-    logs::{LogAction, LogEntry},
+    logs::LogEntry,
     users::{User, auth::UserAuthenticate, permissions::Permission},
     web::{RedirectViaError, components::nav::nav, icons, pages::base},
 };
@@ -15,21 +14,7 @@ use crate::{
 pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let u = User::authenticate(req.headers())?
         .ok_or(RedirectViaError(Redirect::to("/login?re=/logs")))?;
-    let logs: Vec<LogEntry> = vec![
-        LogEntry {
-            id: Uuid::now_v7(),
-            actor: User::get_by_id(Uuid::nil()).unwrap(),
-            data: LogAction::Initialize,
-        },
-        LogEntry {
-            id: Uuid::now_v7(),
-            actor: User::get_by_id(Uuid::nil()).unwrap(),
-            data: LogAction::RegenInfradmin,
-        },
-    ]
-    .into_iter()
-    .rev()
-    .collect();
+    let logs = LogEntry::get_all()?;
 
     Ok(base(
         "Persons | Mnemosyne",

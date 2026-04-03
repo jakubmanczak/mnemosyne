@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     database,
+    logs::{LogAction, LogEntry},
     users::{User, UserError},
 };
 
@@ -15,7 +16,8 @@ pub fn initialise_reserved_users_if_needed() -> Result<(), UserError> {
         .optional()?
         .is_none()
     {
-        User::create_systemuser()?;
+        let u = User::create_systemuser()?;
+        LogEntry::new(u, LogAction::Initialize)?;
     }
 
     if conn
@@ -25,6 +27,7 @@ pub fn initialise_reserved_users_if_needed() -> Result<(), UserError> {
         .is_none()
     {
         User::create_infradmin()?;
+        LogEntry::new(User::get_by_id(Uuid::nil())?, LogAction::RegenInfradmin)?;
     }
 
     Ok(())
