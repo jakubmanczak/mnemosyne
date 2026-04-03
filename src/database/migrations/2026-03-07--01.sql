@@ -19,6 +19,11 @@ CREATE TABLE sessions (
     )
 );
 CREATE INDEX sessions_by_userid ON sessions(user_id);
+CREATE TABLE user_permissions (
+    user_id     BLOB NOT NULL REFERENCES users(id), -- UUIDv7 as bytes
+    permission  TEXT NOT NULL, -- serialized name
+    PRIMARY KEY (user_id, permission)
+) WITHOUT ROWID;
 
 CREATE TABLE quotes (
     id          BLOB NOT NULL UNIQUE PRIMARY KEY, -- UUIDv7 as bytes
