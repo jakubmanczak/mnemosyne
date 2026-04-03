@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
+    database,
     persons::Name,
     quotes::Quote,
     users::{
@@ -23,7 +24,8 @@ pub async fn get_by_id(
     headers: HeaderMap,
 ) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
-    Ok(Json(Quote::get_by_id(id)?).into_response())
+    let conn = database::conn()?;
+    Ok(Json(Quote::get_by_id(&conn, id)?).into_response())
 }
 
 #[derive(Deserialize)]
@@ -46,14 +48,16 @@ pub async fn create(
     Json(form): Json<QuoteCreateForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
+    let conn = database::conn()?;
 
     let lines = form
         .lines
         .into_iter()
-        .map(|l| Ok((l.content, Name::get_by_id(l.name_id)?)))
+        .map(|l| Ok((l.content, Name::get_by_id(&conn, l.name_id)?)))
         .collect::<Result<Vec<(String, Name)>, CompositeError>>()?;
 
     let q = Quote::create(
+        &conn,
         lines,
         form.timestamp,
         form.context,

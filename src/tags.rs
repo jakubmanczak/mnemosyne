@@ -5,14 +5,14 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use rusqlite::{
-    OptionalExtension, Result as RusqliteResult, ToSql,
+    Connection, OptionalExtension, Result as RusqliteResult, ToSql,
     ffi::SQLITE_CONSTRAINT_UNIQUE,
     types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::database::{self, DatabaseError};
+use crate::database::DatabaseError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Tag {
@@ -21,13 +21,11 @@ pub struct Tag {
 }
 
 impl Tag {
-    pub fn total_count() -> Result<i64, TagError> {
-        let conn = database::conn()?;
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM tags", (), |r| r.get(0))?;
-        Ok(count)
+    pub fn total_count(conn: &Connection) -> Result<i64, TagError> {
+        Ok(conn.query_row("SELECT COUNT(*) FROM tags", (), |r| r.get(0))?)
     }
-    pub fn get_all() -> Result<Vec<Tag>, TagError> {
-        Ok(database::conn()?
+    pub fn get_all(conn: &Connection) -> Result<Vec<Tag>, TagError> {
+        Ok(conn
             .prepare("SELECT id, tagname FROM tags")?
             .query_map((), |r| {
                 Ok(Tag {
@@ -37,8 +35,8 @@ impl Tag {
             })?
             .collect::<Result<Vec<Tag>, _>>()?)
     }
-    pub fn get_by_id(id: Uuid) -> Result<Tag, TagError> {
-        let res = database::conn()?
+    pub fn get_by_id(conn: &Connection, id: Uuid) -> Result<Tag, TagError> {
+        let res = conn
             .prepare("SELECT tagname FROM tags WHERE id = ?1")?
             .query_one((&id,), |r| {
                 Ok(Tag {
@@ -52,13 +50,13 @@ impl Tag {
             None => Err(TagError::NoTagWithId(id)),
         }
     }
-    pub fn get_tagged_quotes_count(&self) -> Result<i64, TagError> {
-        Ok(database::conn()?
+    pub fn get_tagged_quotes_count(&self, conn: &Connection) -> Result<i64, TagError> {
+        Ok(conn
             .prepare("SELECT COUNT(*) FROM quote_tags WHERE tag_id = ?1")?
             .query_one((self.id,), |r| Ok(r.get(0)?))?)
     }
-    pub fn get_by_name(name: TagName) -> Result<Tag, TagError> {
-        let res = database::conn()?
+    pub fn get_by_name(conn: &Connection, name: TagName) -> Result<Tag, TagError> {
+        let res = conn
             .prepare("SELECT id, tagname FROM tags WHERE tagname = ?1")?
             .query_one((&name,), |r| {
                 Ok(Tag {
@@ -72,23 +70,20 @@ impl Tag {
             None => Err(TagError::NoTagWithName(name)),
         }
     }
-    pub fn create(name: TagName) -> Result<Tag, TagError> {
+    pub fn create(conn: &Connection, name: TagName) -> Result<Tag, TagError> {
         let id = Uuid::now_v7();
-        database::conn()?
-            .prepare("INSERT INTO tags(id, tagname) VALUES (?1, ?2)")?
+        conn.prepare("INSERT INTO tags(id, tagname) VALUES (?1, ?2)")?
             .execute((id, &name))?;
         Ok(Tag { id, name })
     }
-    pub fn rename(&mut self, name: TagName) -> Result<(), TagError> {
-        database::conn()?
-            .prepare("UPDATE tags SET tagname = ?1 WHERE id = ?2")?
+    pub fn rename(&mut self, conn: &Connection, name: TagName) -> Result<(), TagError> {
+        conn.prepare("UPDATE tags SET tagname = ?1 WHERE id = ?2")?
             .execute((&name, self.id))?;
         self.name = name;
         Ok(())
     }
-    pub fn delete(self) -> Result<(), TagError> {
-        database::conn()?
-            .prepare("DELETE FROM tags WHERE id = ?1")?
+    pub fn delete(self, conn: &Connection) -> Result<(), TagError> {
+        conn.prepare("DELETE FROM tags WHERE id = ?1")?
             .execute((self.id,))?;
         Ok(())
     }

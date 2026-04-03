@@ -5,13 +5,16 @@ use axum::{
 };
 use serde::Deserialize;
 
-use crate::users::{
-    User,
-    auth::{
-        AuthError, COOKIE_NAME, SessionAuthRequired, SessionAuthenticate, UserAuthRequired,
-        implementation::authenticate_via_credentials,
+use crate::{
+    database,
+    users::{
+        User,
+        auth::{
+            AuthError, COOKIE_NAME, SessionAuthRequired, SessionAuthenticate, UserAuthRequired,
+            implementation::authenticate_via_credentials,
+        },
+        sessions::Session,
     },
-    sessions::Session,
 };
 
 #[derive(Deserialize)]
@@ -22,7 +25,8 @@ pub struct LoginForm {
 
 fn login_common(creds: LoginForm) -> Result<(String, String), AuthError> {
     let u = authenticate_via_credentials(&creds.handle, &creds.password)?.required()?;
-    let (_, token) = Session::new_for_user(&u)?;
+    let conn = database::conn()?;
+    let (_, token) = Session::new_for_user(&conn, &u)?;
     let secure = match cfg!(debug_assertions) {
         false => "; Secure",
         true => "",
@@ -49,13 +53,15 @@ pub async fn login_form(Form(creds): Form<LoginForm>) -> Result<Response, AuthEr
 
 pub async fn logout(headers: HeaderMap) -> Result<Response, AuthError> {
     let mut s = Session::authenticate(&headers)?.required()?;
-    s.revoke(Some(&User::get_by_id(s.user_id)?))?;
+    let conn = database::conn()?;
+    s.revoke(&conn, Some(&User::get_by_id(&conn, s.user_id)?))?;
     let cookie = format!("{COOKIE_NAME}=revoking; Path=/; HttpOnly; Max-Age=0");
     Ok(([(header::SET_COOKIE, cookie)], "Logged out!").into_response())
 }
 pub async fn logout_form(headers: HeaderMap) -> Result<Response, AuthError> {
     let mut s = Session::authenticate(&headers)?.required()?;
-    s.revoke(Some(&User::get_by_id(s.user_id)?))?;
+    let conn = database::conn()?;
+    s.revoke(&conn, Some(&User::get_by_id(&conn, s.user_id)?))?;
     let cookie = format!("{COOKIE_NAME}=revoking; Path=/; HttpOnly; Max-Age=0");
     Ok(([(header::SET_COOKIE, cookie)], Redirect::to("/")).into_response())
 }

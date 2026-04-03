@@ -4,6 +4,8 @@ use maud::{Markup, PreEscaped, html};
 use uuid::Uuid;
 
 use crate::{
+    api::CompositeError,
+    database::{self, DatabaseError},
     persons::{Name, Person},
     quotes::{Quote, QuoteLine},
     tags::Tag,
@@ -20,9 +22,12 @@ const LINKS: &[(&str, &str, &str)] = &[
     ("Add Person", "/persons/add", icons::CONTACT),
 ];
 
-pub async fn page(req: Request) -> Markup {
+pub async fn page(req: Request) -> Result<Markup, CompositeError> {
     let u = User::authenticate(req.headers()).ok().flatten();
-    base(
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    Ok(base(
         "Dashboard | Mnemosyne",
         html!(
             (nav(u.as_ref(), req.uri().path()))
@@ -55,25 +60,25 @@ pub async fn page(req: Request) -> Markup {
             }
             div class="mx-auto max-w-4xl mt-4 flex flex-row gap-2" {
                 (chip(html!({
-                    @match Quote::total_count() {
+                    @match Quote::total_count(&tx) {
                         Ok(count) => {(count) " QUOTES TOTAL"},
                         Err(_) => span class="text-red-400" {"QUOTE COUNT ERR"},
                     }
                 })))
                 (chip(html!({
-                    @match Person::total_count() {
+                    @match Person::total_count(&tx) {
                         Ok(count) => {(count) " PERSONS TOTAL"},
                         Err(_) => span class="text-red-400" {"PERSON COUNT ERR"},
                     }
                 })))
                 (chip(html!({
-                    @match Tag::total_count() {
+                    @match Tag::total_count(&tx) {
                         Ok(count) => {(count) " TAGS TOTAL"},
                         Err(_) => span class="text-red-400" {"TAG COUNT ERR"}
                     }
                 })))
                 (chip(html!({
-                    @match User::total_count() {
+                    @match User::total_count(&tx) {
                         Ok(count) => {(count) " USERS TOTAL"},
                         Err(_) => span class="text-red-400" {"USER COUNT ERR"}
                     }
@@ -82,7 +87,7 @@ pub async fn page(req: Request) -> Markup {
 
             div class="text-4xl xs:text-6xl sm:text-8xl text-neutral-800/25 mt-16 text-center font-semibold font-lora select-none" {"Mnemosyne"}
         ),
-    )
+    ))
 }
 
 fn sample_quote_1() -> Quote {

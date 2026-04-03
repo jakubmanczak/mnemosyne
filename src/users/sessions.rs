@@ -3,13 +3,13 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use chrono::{DateTime, Duration, Utc};
-use rusqlite::OptionalExtension;
+use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
-    database::{self, DatabaseError},
+    database::DatabaseError,
     users::{
         User,
         auth::{self, COOKIE_NAME},
@@ -70,8 +70,8 @@ impl IntoResponse for SessionError {
 }
 
 impl Session {
-    pub fn get_by_id(id: Uuid) -> Result<Session, SessionError> {
-        let res = database::conn()?
+    pub fn get_by_id(conn: &Connection, id: Uuid) -> Result<Session, SessionError> {
+        let res = conn
             .prepare("SELECT user_id, expiry, revoked, revoked_at, revoked_by FROM sessions WHERE id = ?1")?
             .query_one((&id,), |r| Ok(Session {
                 id,
@@ -90,9 +90,9 @@ impl Session {
             None => Err(SessionError::NoSessionWithId(id)),
         }
     }
-    pub fn get_by_token(token: &str) -> Result<Session, SessionError> {
+    pub fn get_by_token(conn: &Connection, token: &str) -> Result<Session, SessionError> {
         let hashed = Sha256::digest(token.as_bytes()).to_vec();
-        let res = database::conn()?
+        let res = conn
             .prepare("SELECT id, user_id, expiry, revoked, revoked_at, revoked_by FROM sessions WHERE token = ?1")?
             .query_one((hashed,), |r| Ok(Session {
                 id: r.get(0)?,
@@ -111,14 +111,13 @@ impl Session {
             None => Err(SessionError::NoSessionWithToken(token.to_string())),
         }
     }
-    pub fn new_for_user(user: &User) -> Result<(Session, String), SessionError> {
+    pub fn new_for_user(conn: &Connection, user: &User) -> Result<(Session, String), SessionError> {
         let id = Uuid::now_v7();
         let token = auth::generate_token(auth::TokenSize::Char64);
         let hashed = Sha256::digest(token.as_bytes()).to_vec();
         let expiry = Utc::now() + Session::DEFAULT_PROLONGATION;
 
-        database::conn()?
-            .prepare("INSERT INTO sessions(id, token, user_id, expiry) VALUES (?1, ?2, ?3, ?4)")?
+        conn.prepare("INSERT INTO sessions(id, token, user_id, expiry) VALUES (?1, ?2, ?3, ?4)")?
             .execute((&id, &hashed, user.id, expiry))?;
         let s = Session {
             id,
@@ -131,7 +130,7 @@ impl Session {
 
     pub const DEFAULT_PROLONGATION: Duration = Duration::days(14);
     const PROLONGATION_THRESHOLD: Duration = Duration::hours(2);
-    pub fn prolong(&mut self) -> Result<(), SessionError> {
+    pub fn prolong(&mut self, conn: &Connection) -> Result<(), SessionError> {
         if self.expiry - Session::DEFAULT_PROLONGATION + Session::PROLONGATION_THRESHOLD
             > Utc::now()
         {
@@ -139,21 +138,19 @@ impl Session {
         }
 
         let expiry = Utc::now() + Session::DEFAULT_PROLONGATION;
-        database::conn()?
-            .prepare("UPDATE sessions SET expiry = ?1 WHERE id = ?2")?
+        conn.prepare("UPDATE sessions SET expiry = ?1 WHERE id = ?2")?
             .execute((&expiry, &self.id))?;
         self.expiry = expiry;
         Ok(())
     }
 
-    pub fn revoke(&mut self, actor: Option<&User>) -> Result<(), SessionError> {
+    pub fn revoke(&mut self, conn: &Connection, actor: Option<&User>) -> Result<(), SessionError> {
         let now = Utc::now();
         let id = actor.map(|u| u.id).unwrap_or(Uuid::nil());
-        database::conn()?
-            .prepare(
-                "UPDATE sessions SET revoked = ?1, revoked_at = ?2, revoked_by = ?3 WHERE id = ?4",
-            )?
-            .execute((&true, &now, &id, &self.id))?;
+        conn.prepare(
+            "UPDATE sessions SET revoked = ?1, revoked_at = ?2, revoked_by = ?3 WHERE id = ?4",
+        )?
+        .execute((&true, &now, &id, &self.id))?;
         self.status = SessionStatus::Revoked {
             revoked_at: now,
             revoked_by: id,

@@ -1,3 +1,5 @@
+use rusqlite::Connection;
+
 use crate::{database::DatabaseError, users::User};
 
 /// Infradmin and systemuser have all permissions.
@@ -21,6 +23,7 @@ pub enum Permission {
 impl User {
     pub fn has_permission(
         &self,
+        #[allow(unused)] conn: &Connection,
         #[allow(unused)] permission: Permission,
     ) -> Result<bool, DatabaseError> {
         // Infradmin and systemuser have all permissions

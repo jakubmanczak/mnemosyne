@@ -1,13 +1,10 @@
 use axum::{http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, FixedOffset};
-use rusqlite::OptionalExtension;
+use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::{
-    database::{self, DatabaseError},
-    persons::Name,
-};
+use crate::{database::DatabaseError, persons::Name};
 
 #[derive(Serialize)]
 pub struct Quote {
@@ -38,14 +35,10 @@ pub enum QuoteError {
 }
 
 impl Quote {
-    pub fn total_count() -> Result<i64, QuoteError> {
-        let conn = database::conn()?;
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM quotes", (), |r| r.get(0))?;
-        Ok(count)
+    pub fn total_count(conn: &Connection) -> Result<i64, QuoteError> {
+        Ok(conn.query_row("SELECT COUNT(*) FROM quotes", (), |r| r.get(0))?)
     }
-    pub fn get_by_id(id: Uuid) -> Result<Quote, QuoteError> {
-        let conn = database::conn()?;
-
+    pub fn get_by_id(conn: &Connection, id: Uuid) -> Result<Quote, QuoteError> {
         let quotemain = conn
             .prepare(
                 "SELECT timestamp, location, context, created_by, public FROM quotes WHERE id = ?1",
@@ -100,6 +93,7 @@ impl Quote {
         })
     }
     pub fn create(
+        conn: &Connection,
         lines: Vec<(String, Name)>,
         timestamp: DateTime<FixedOffset>,
         context: Option<String>,
@@ -111,14 +105,11 @@ impl Quote {
             return Err(QuoteError::EmptyQuote);
         }
 
-        let conn = database::conn()?;
         let quote_id = Uuid::now_v7();
         let lines: Vec<(Uuid, String, Name)> = lines
             .into_iter()
             .map(|(c, a)| (Uuid::now_v7(), c, a))
             .collect();
-
-        conn.execute("BEGIN TRANSACTION", ())?;
 
         let mut quote_stmt = conn.prepare(
             r#"
@@ -138,7 +129,6 @@ impl Quote {
             line_stmt.execute((id, quote_id, content, attr.id, ordering as i64))?;
         }
 
-        conn.execute("COMMIT", ())?;
         Ok(Quote {
             id: quote_id,
             lines: lines

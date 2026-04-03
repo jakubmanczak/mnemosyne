@@ -6,6 +6,7 @@ use maud::{PreEscaped, html};
 
 use crate::{
     api::CompositeError,
+    database::{self, DatabaseError},
     logs::LogEntry,
     users::{User, auth::UserAuthenticate, permissions::Permission},
     web::{RedirectViaError, components::nav::nav, icons, pages::base},
@@ -14,14 +15,16 @@ use crate::{
 pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let u = User::authenticate(req.headers())?
         .ok_or(RedirectViaError(Redirect::to("/login?re=/logs")))?;
-    let logs = LogEntry::get_all()?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let logs = LogEntry::get_all(&tx)?;
 
     Ok(base(
         "Persons | Mnemosyne",
         html!(
             (nav(Some(&u), req.uri().path()))
 
-            @if let Ok(true) = u.has_permission(Permission::BrowseServerLogs) {
+            @if let Ok(true) = u.has_permission(&tx, Permission::BrowseServerLogs) {
                 div class="max-w-4xl mx-auto px-2" {
                     div class="my-4" {
                         p class="flex items-center gap-2" {

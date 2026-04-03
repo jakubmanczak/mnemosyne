@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    database::{self, DatabaseError},
     logs::{LogAction, LogEntry},
     tags::{Tag, TagName},
     users::{
@@ -20,6 +21,7 @@ use crate::{
 
 pub async fn page(req: Request) -> Result<Response, AuthError> {
     let u = User::authenticate(req.headers())?;
+    let conn = database::conn()?;
 
     Ok(base(
         "Tags | Mnemosyne",
@@ -33,14 +35,14 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                         span class="text-2xl font-semibold font-lora" {"Tags"}
                     }
                     p class="text-neutral-500 text-sm font-light" {
-                        @if let Ok(c) = Tag::total_count() {
+                        @if let Ok(c) = Tag::total_count(&conn) {
                             (c) " tags in total."
                         } @else {
                             "Could not get total tag count."
                         }
                     }
                 }
-                @if let Ok(tags) = Tag::get_all() {
+                @if let Ok(tags) = Tag::get_all(&conn) {
                     div class="max-w-4xl mx-auto mt-4 flex flex-wrap gap-2" {
                         @for tag in &tags {
                             div class="rounded-full px-3 py-1 bg-neutral-200/10 border border-neutral-200/15 flex" {
@@ -49,7 +51,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                                 div class="w-px h-2/3 my-auto mx-2 bg-neutral-200/15" {}
                                 div class="text-xs flex items-center" {
                                     (
-                                        if let Ok(i) = tag.get_tagged_quotes_count() {
+                                        if let Ok(i) = tag.get_tagged_quotes_count(&conn) {
                                             i.to_string()
                                         } else {
                                             "?".to_string()
@@ -96,13 +98,18 @@ pub async fn create(
     Form(form): Form<TagForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let t = Tag::create(form.tagname)?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    let t = Tag::create(&tx, form.tagname)?;
     LogEntry::new(
+        &tx,
         u,
         LogAction::CreateTag {
             id: t.id,
             name: t.name.to_string(),
         },
     )?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok(Redirect::to("/tags").into_response())
 }

@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    database::{self, DatabaseError},
     logs::{LogAction, LogEntry},
     users::{
         User,
@@ -81,9 +82,13 @@ pub async fn change_handle(
     Form(form): Form<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let mut u = User::authenticate(&headers)?.required()?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
     let oldhandle = u.handle.as_str().to_string();
-    u.set_handle(form.handle)?;
+    u.set_handle(&tx, form.handle)?;
     LogEntry::new(
+        &tx,
         u.clone(),
         LogAction::ChangeUserHandle {
             id: u.id,
@@ -103,6 +108,9 @@ pub async fn change_password(
     Form(form): Form<PasswordForm>,
 ) -> Result<Response, CompositeError> {
     let mut u = User::authenticate(&headers)?.required()?;
-    u.set_password(Some(&form.password))?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    u.set_password(&tx, Some(&form.password))?;
     Ok(Redirect::to("/user-settings").into_response())
 }

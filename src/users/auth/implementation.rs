@@ -202,7 +202,7 @@ pub fn authenticate_via_credentials(
 
     match user {
         Some((id, Some(passhash))) => match User::match_hash_password(password, &passhash)? {
-            true => Ok(Some(User::get_by_id(id)?)),
+            true => Ok(Some(User::get_by_id(&conn, id)?)),
             false => Err(AuthError::InvalidCredentials),
         },
         _ => {
@@ -213,18 +213,20 @@ pub fn authenticate_via_credentials(
 }
 
 fn authenticate_bearer(token: &str) -> Result<Option<User>, AuthError> {
-    let mut s = Session::get_by_token(token)?;
+    let conn = database::conn().map_err(|e| DatabaseError::from(e))?;
+    let mut s = Session::get_by_token(&conn, token)?;
     if s.is_expired_or_revoked() {
         return Err(AuthError::InvalidCredentials);
     }
-    s.prolong()?;
-    Ok(Some(User::get_by_id(s.user_id)?))
+    s.prolong(&conn)?;
+    Ok(Some(User::get_by_id(&conn, s.user_id)?))
 }
 fn authenticate_bearer_with_session(token: &str) -> Result<Option<Session>, AuthError> {
-    let mut s = Session::get_by_token(token)?;
+    let conn = database::conn().map_err(|e| DatabaseError::from(e))?;
+    let mut s = Session::get_by_token(&conn, token)?;
     if s.is_expired_or_revoked() {
         return Err(AuthError::InvalidCredentials);
     }
-    s.prolong()?;
+    s.prolong(&conn)?;
     Ok(Some(s))
 }

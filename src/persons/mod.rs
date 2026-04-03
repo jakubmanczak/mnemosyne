@@ -2,11 +2,11 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use rusqlite::OptionalExtension;
+use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::database::{self, DatabaseError};
+use crate::database::DatabaseError;
 
 #[derive(Serialize)]
 pub struct Person {
@@ -39,13 +39,11 @@ pub enum PersonError {
 }
 
 impl Person {
-    pub fn total_count() -> Result<i64, PersonError> {
-        let conn = database::conn()?;
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM persons", (), |r| r.get(0))?;
-        Ok(count)
+    pub fn total_count(conn: &Connection) -> Result<i64, PersonError> {
+        Ok(conn.query_row("SELECT COUNT(*) FROM persons", (), |r| r.get(0))?)
     }
-    pub fn get_all() -> Result<Vec<Person>, PersonError> {
-        Ok(database::conn()?
+    pub fn get_all(conn: &Connection) -> Result<Vec<Person>, PersonError> {
+        Ok(conn
             .prepare("SELECT p.id, p.created_by, n.name FROM persons p JOIN names n ON p.id = n.person_id AND n.is_primary = 1")?
             .query_map((), |r| {
                 Ok(Person {
@@ -57,8 +55,8 @@ impl Person {
             .collect::<Result<Vec<Person>, _>>()?)
     }
 
-    pub fn get_by_id(id: Uuid) -> Result<Person, PersonError> {
-        let res = database::conn()?
+    pub fn get_by_id(conn: &Connection, id: Uuid) -> Result<Person, PersonError> {
+        let res = conn
             .prepare("SELECT p.created_by, n.name FROM persons p JOIN names n ON p.id = n.person_id AND n.is_primary = 1 WHERE p.id = ?1")?
             .query_one((&id,), |r| {
                 Ok(Person {
@@ -74,8 +72,8 @@ impl Person {
         }
     }
 
-    pub fn get_in_quote_count(&self) -> Result<i64, PersonError> {
-        Ok(database::conn()?
+    pub fn get_in_quote_count(&self, conn: &Connection) -> Result<i64, PersonError> {
+        Ok(conn
             .prepare(
                 r#"
             SELECT COUNT(DISTINCT l.quote_id) AS quote_count
@@ -86,8 +84,8 @@ impl Person {
             .query_one((self.id,), |r| Ok(r.get(0)?))?)
     }
 
-    pub fn get_all_names(&self) -> Result<Vec<Name>, PersonError> {
-        Ok(database::conn()?
+    pub fn get_all_names(&self, conn: &Connection) -> Result<Vec<Name>, PersonError> {
+        Ok(conn
             .prepare("SELECT id, is_primary, person_id, created_by, name FROM names WHERE person_id = ?1")?
             .query_map((&self.id,), |r| {
                 Ok(Name {
@@ -101,10 +99,14 @@ impl Person {
             .collect::<Result<Vec<Name>, _>>()?)
     }
 
-    pub fn add_name(&self, name: String, created_by: Uuid) -> Result<Name, PersonError> {
+    pub fn add_name(
+        &self,
+        conn: &Connection,
+        name: String,
+        created_by: Uuid,
+    ) -> Result<Name, PersonError> {
         let id = Uuid::now_v7();
-        database::conn()?
-            .prepare("INSERT INTO names VALUES (?1, ?2, ?3, ?4, ?5)")?
+        conn.prepare("INSERT INTO names VALUES (?1, ?2, ?3, ?4, ?5)")?
             .execute((id, 0, self.id, created_by, &name))?;
         Ok(Name {
             id,
@@ -115,18 +117,18 @@ impl Person {
         })
     }
 
-    pub fn create(primary_name: String, created_by: Uuid) -> Result<Person, PersonError> {
+    pub fn create(
+        conn: &Connection,
+        primary_name: String,
+        created_by: Uuid,
+    ) -> Result<Person, PersonError> {
         let person_id = Uuid::now_v7();
         let name_id = Uuid::now_v7();
-
-        let conn = database::conn()?;
-        conn.execute("BEGIN TRANSACTION", ())?;
 
         conn.prepare("INSERT INTO persons(id, created_by) VALUES (?1, ?2)")?
             .execute((person_id, created_by))?;
         conn.prepare("INSERT INTO names VALUES (?1, ?2, ?3, ?4, ?5)")?
             .execute((name_id, 1, person_id, created_by, &primary_name))?;
-        conn.execute("COMMIT", ())?;
 
         Ok(Person {
             id: person_id,
@@ -137,8 +139,8 @@ impl Person {
 }
 
 impl Name {
-    pub fn get_by_id(id: Uuid) -> Result<Name, PersonError> {
-        let res = database::conn()?
+    pub fn get_by_id(conn: &Connection, id: Uuid) -> Result<Name, PersonError> {
+        let res = conn
             .prepare("SELECT id, is_primary, person_id, created_by, name FROM names WHERE id = ?1")?
             .query_one((&id,), |r| {
                 Ok(Name {
@@ -155,20 +157,15 @@ impl Name {
             None => Err(PersonError::NoNameWithId(id)),
         }
     }
-    pub fn set_primary(&mut self) -> Result<(), PersonError> {
+    pub fn set_primary(&mut self, conn: &Connection) -> Result<(), PersonError> {
         if self.is_primary {
             return Err(PersonError::AlreadyPrimary);
         }
-
-        let conn = database::conn()?;
-        conn.execute("BEGIN TRANSACTION", ())?;
-
         conn.prepare("UPDATE names SET is_primary = 0 WHERE person_id = ?1 AND is_primary = 1")?
             .execute((&self.person_id,))?;
         conn.prepare("UPDATE names SET is_primary = 1 WHERE id = ?1")?
             .execute((&self.id,))?;
 
-        conn.execute("COMMIT", ())?;
         self.is_primary = true;
         Ok(())
     }

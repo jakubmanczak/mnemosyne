@@ -1,11 +1,9 @@
+use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
 use uuid::Uuid;
 
-use crate::{
-    database::{self, DatabaseError},
-    users::User,
-};
+use crate::{database::DatabaseError, users::User};
 
 #[derive(Debug)]
 pub struct LogEntry {
@@ -15,13 +13,12 @@ pub struct LogEntry {
 }
 
 impl LogEntry {
-    pub fn new(actor: User, data: LogAction) -> Result<LogEntry, DatabaseError> {
+    pub fn new(conn: &Connection, actor: User, data: LogAction) -> Result<LogEntry, DatabaseError> {
         let log = LogEntry {
             id: Uuid::now_v7(),
             actor,
             data,
         };
-        let conn = database::conn()?;
         let actiontype: &'static str = (&log.data).into();
         let payload = serde_json::to_string(&log.data).unwrap();
         conn.prepare(
@@ -36,14 +33,14 @@ impl LogEntry {
         ))?;
         Ok(log)
     }
-    pub fn get_all() -> Result<Vec<LogEntry>, DatabaseError> {
-        Ok(database::conn()?
+    pub fn get_all(conn: &Connection) -> Result<Vec<LogEntry>, DatabaseError> {
+        Ok(conn
             .prepare("SELECT id, actor, target, actiontype, payload FROM logs ORDER BY id DESC")?
             .query_map((), |r| {
                 let payload: String = r.get(4)?;
                 Ok(LogEntry {
                     id: r.get(0)?,
-                    actor: User::get_by_id(r.get(1)?).unwrap(),
+                    actor: User::get_by_id(conn, r.get(1)?).unwrap(),
                     data: serde_json::from_str(&payload).unwrap(),
                 })
             })?

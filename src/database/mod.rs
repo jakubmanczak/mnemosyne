@@ -32,7 +32,7 @@ impl IntoResponse for DatabaseError {
     }
 }
 
-pub fn conn() -> Result<Connection, rusqlite::Error> {
+pub fn conn() -> Result<Connection, DatabaseError> {
     let conn = Connection::open(&*DB_URL)?;
     for pragma in CONNECTION_PRAGMAS {
         conn.query_row(pragma, (), |_| Ok(())).optional()?;

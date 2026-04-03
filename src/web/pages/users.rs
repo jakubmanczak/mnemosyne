@@ -5,6 +5,7 @@ use axum::{
 use maud::{PreEscaped, html};
 
 use crate::{
+    database,
     users::{
         User,
         auth::{AuthError, UserAuthenticate},
@@ -22,8 +23,9 @@ pub mod profile;
 
 pub async fn page(req: Request) -> Result<Response, AuthError> {
     let u = User::authenticate(req.headers())?;
+    let conn = database::conn()?;
     let us = match u.is_some() {
-        true => User::get_all(),
+        true => User::get_all(&conn),
         false => Ok(vec![]),
     };
 
@@ -44,7 +46,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                         } @else {
                             "Could not fetch user count."
                         }
-                        @if let Ok(true) = u.has_permission(Permission::ManuallyCreateUsers) {
+                        @if let Ok(true) = u.has_permission(&conn, Permission::ManuallyCreateUsers) {
                             " "
                             a href="/users/create" class="text-blue-500 hover:text-blue-400 hover:underline" {
                                 "Create a new user"

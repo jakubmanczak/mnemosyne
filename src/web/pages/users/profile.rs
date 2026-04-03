@@ -7,12 +7,11 @@ use maud::{PreEscaped, html};
 use uuid::Uuid;
 
 use crate::{
+    api::CompositeError,
+    database::{self, DatabaseError},
     persons::Name,
     quotes::{Quote, QuoteLine},
-    users::{
-        User, UserError,
-        auth::{AuthError, UserAuthenticate},
-    },
+    users::{User, UserError, auth::UserAuthenticate},
     web::{
         components::{nav::nav, quote::quote},
         icons,
@@ -20,12 +19,15 @@ use crate::{
     },
 };
 
-pub async fn page(Path(id): Path<Uuid>, req: Request) -> Result<Response, AuthError> {
+pub async fn page(Path(id): Path<Uuid>, req: Request) -> Result<Response, CompositeError> {
     let u = match User::authenticate(req.headers())? {
         Some(u) => u,
         None => return Ok(Redirect::to("/users").into_response()),
     };
-    let user = match User::get_by_id(id) {
+    let mut conn = database::conn().map_err(DatabaseError::from)?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    let user = match User::get_by_id(&tx, id) {
         Ok(u) => u,
         Err(UserError::NoUserWithId(_)) => {
             return Ok(base(

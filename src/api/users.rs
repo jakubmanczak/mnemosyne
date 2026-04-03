@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
+    database,
     users::{
         User,
         auth::{UserAuthRequired, UserAuthenticate},
@@ -32,7 +33,8 @@ pub async fn get_by_id(
     headers: HeaderMap,
 ) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
-    Ok(Json(User::get_by_id(id)?).into_response())
+    let conn = database::conn()?;
+    Ok(Json(User::get_by_id(&conn, id)?).into_response())
 }
 
 pub async fn get_by_handle(
@@ -40,12 +42,14 @@ pub async fn get_by_handle(
     headers: HeaderMap,
 ) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
-    Ok(Json(User::get_by_handle(handle)?).into_response())
+    let conn = database::conn()?;
+    Ok(Json(User::get_by_handle(&conn, handle)?).into_response())
 }
 
 pub async fn get_all(headers: HeaderMap) -> Result<Response, CompositeError> {
     User::authenticate(&headers)?.required()?;
-    Ok(Json(User::get_all()?).into_response())
+    let conn = database::conn()?;
+    Ok(Json(User::get_all(&conn)?).into_response())
 }
 
 #[derive(Deserialize)]
@@ -57,10 +61,11 @@ pub async fn create(
     Json(form): Json<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    if !u.has_permission(Permission::ManuallyCreateUsers)? {
+    let conn = database::conn()?;
+    if !u.has_permission(&conn, Permission::ManuallyCreateUsers)? {
         return Ok((StatusCode::FORBIDDEN, CANT_MANUALLY_MAKE_USERS).into_response());
     }
-    Ok(Json(User::create(form.handle)?).into_response())
+    Ok(Json(User::create(&conn, form.handle)?).into_response())
 }
 pub async fn change_handle(
     Path(id): Path<Uuid>,
@@ -68,15 +73,17 @@ pub async fn change_handle(
     Json(form): Json<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
+    let conn = database::conn()?;
+
     let mut target = if u.id == id {
         u
     } else {
-        if !u.has_permission(Permission::ChangeOthersHandles)? {
+        if !u.has_permission(&conn, Permission::ChangeOthersHandles)? {
             return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_HANDLE).into_response());
         }
-        User::get_by_id(id)?
+        User::get_by_id(&conn, id)?
     };
-    target.set_handle(form.handle)?;
+    target.set_handle(&conn, form.handle)?;
     Ok(HANDLE_CHANGED_SUCCESS.into_response())
 }
 
@@ -90,14 +97,15 @@ pub async fn change_password(
     Json(form): Json<ChangePasswordForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
+    let conn = database::conn()?;
     let mut target = if u.id == id {
         u
     } else {
-        if !u.has_permission(Permission::ChangeOthersPasswords)? {
+        if !u.has_permission(&conn, Permission::ChangeOthersPasswords)? {
             return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_PASSW).into_response());
         }
-        User::get_by_id(id)?
+        User::get_by_id(&conn, id)?
     };
-    target.set_password(Some(&form.password))?;
+    target.set_password(&conn, Some(&form.password))?;
     Ok(PASSW_CHANGED_SUCCESS.into_response())
 }

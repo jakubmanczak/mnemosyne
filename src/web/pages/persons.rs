@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    database::{self, DatabaseError},
     logs::{LogAction, LogEntry},
     persons::Person,
     users::{
@@ -20,6 +21,8 @@ use crate::{
 
 pub async fn page(req: Request) -> Result<Response, AuthError> {
     let u = User::authenticate(req.headers())?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction()?;
 
     Ok(base(
         "Persons | Mnemosyne",
@@ -33,14 +36,14 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                         span class="text-2xl font-semibold font-lora" {"Persons"}
                     }
                     p class="text-neutral-500 text-sm font-light" {
-                        @if let Ok(c) = Person::total_count() {
+                        @if let Ok(c) = Person::total_count(&tx) {
                             (c) " persons in total."
                         } @else {
                             "Could not get total person count."
                         }
                     }
                 }
-                @if let Ok(persons) = Person::get_all() {
+                @if let Ok(persons) = Person::get_all(&tx) {
                     div class="max-w-4xl mx-auto px-2 mt-4 flex flex-wrap gap-2" {
                         @for person in &persons {
                             div class="rounded px-4 py-2 bg-neutral-200/10 border border-neutral-200/15 flex items-center" {
@@ -49,7 +52,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                                 div class="w-px h-2/3 my-auto mx-2 bg-neutral-200/15" {}
                                 div class="text-xs flex items-center" {
                                     (
-                                        if let Ok(i) = person.get_in_quote_count() {
+                                        if let Ok(i) = person.get_in_quote_count(&tx) {
                                             i.to_string()
                                         } else {
                                             "?".to_string()
@@ -96,13 +99,18 @@ pub async fn create(
     Form(form): Form<PersonNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let p = Person::create(form.primary_name, u.id)?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    let p = Person::create(&tx, form.primary_name, u.id)?;
     LogEntry::new(
+        &tx,
         u,
         LogAction::CreatePerson {
             id: p.id,
             pname: p.primary_name,
         },
     )?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok(Redirect::to("/persons").into_response())
 }

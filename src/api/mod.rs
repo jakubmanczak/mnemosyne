@@ -85,5 +85,5 @@ composite_from!(
     PersonError,
     QuoteError,
     DatabaseError,
-    RedirectViaError
+    RedirectViaError,
 );

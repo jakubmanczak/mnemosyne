@@ -9,6 +9,7 @@ use serde::Deserialize;
 
 use crate::{
     api::CompositeError,
+    database::{self, DatabaseError},
     logs::{LogAction, LogEntry},
     users::{
         User,
@@ -21,6 +22,7 @@ use crate::{
 
 pub async fn page(req: Request) -> Result<Response, AuthError> {
     let u = User::authenticate(req.headers())?;
+    let conn = database::conn()?;
 
     Ok(base(
         "Users | Mnemosyne",
@@ -34,7 +36,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
                         span class="text-2xl font-semibold font-lora" {"Create a new user"}
                     }
                 }
-                @if let Ok(true) = u.has_permission(Permission::ManuallyCreateUsers) {
+                @if let Ok(true) = u.has_permission(&conn, Permission::ManuallyCreateUsers) {
                     div class="mx-auto max-w-4xl px-2 mt-4" {
                         form action="/users/create-form" method="post" class="flex flex-col" {
                             label for="handle" class="font-light text-neutral-500" {"Handle"}
@@ -71,17 +73,22 @@ pub async fn create_user(
     Form(form): Form<CreateUserWithPasswordForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    if !u.has_permission(Permission::ManuallyCreateUsers)? {
+    let mut conn = database::conn().map_err(DatabaseError::from)?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    if !u.has_permission(&tx, Permission::ManuallyCreateUsers)? {
         return Ok((StatusCode::FORBIDDEN).into_response());
     }
-    let mut nu = User::create(form.handle)?;
-    nu.set_password(Some(&form.password))?;
+    let mut nu = User::create(&tx, form.handle)?;
+    nu.set_password(&tx, Some(&form.password))?;
     LogEntry::new(
+        &tx,
         u,
         LogAction::CreateUser {
             id: nu.id,
             handle: nu.handle.as_str().to_string(),
         },
     )?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok(Redirect::to("/users").into_response())
 }

@@ -3,13 +3,13 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use chrono::{DateTime, NaiveDate};
-use rusqlite::{OptionalExtension, ffi::SQLITE_CONSTRAINT_UNIQUE};
+use rusqlite::{Connection, OptionalExtension, ffi::SQLITE_CONSTRAINT_UNIQUE};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
     ISE_MSG,
-    database::{self, DatabaseError},
+    database::DatabaseError,
     users::{
         auth::UserPasswordHashing,
         handle::{UserHandle, UserHandleError},
@@ -45,13 +45,11 @@ pub enum UserError {
 }
 
 impl User {
-    pub fn total_count() -> Result<i64, UserError> {
-        let conn = database::conn()?;
-        let count: i64 = conn.query_row("SELECT COUNT(*) FROM users", (), |r| r.get(0))?;
-        Ok(count)
+    pub fn total_count(conn: &Connection) -> Result<i64, UserError> {
+        Ok(conn.query_row("SELECT COUNT(*) FROM users", (), |r| r.get(0))?)
     }
-    pub fn get_by_id(id: Uuid) -> Result<User, UserError> {
-        let res = database::conn()?
+    pub fn get_by_id(conn: &Connection, id: Uuid) -> Result<User, UserError> {
+        let res = conn
             .prepare("SELECT handle FROM users WHERE id = ?1")?
             .query_one((&id,), |r| {
                 Ok(User {
@@ -65,8 +63,8 @@ impl User {
             None => Err(UserError::NoUserWithId(id)),
         }
     }
-    pub fn get_by_handle(handle: UserHandle) -> Result<User, UserError> {
-        let res = database::conn()?
+    pub fn get_by_handle(conn: &Connection, handle: UserHandle) -> Result<User, UserError> {
+        let res = conn
             .prepare("SELECT id, handle FROM users WHERE handle = ?1")?
             .query_one((&handle,), |r| {
                 Ok(User {
@@ -80,8 +78,8 @@ impl User {
             None => Err(UserError::NoUserWithHandle(handle)),
         }
     }
-    pub fn get_all() -> Result<Vec<User>, UserError> {
-        Ok(database::conn()?
+    pub fn get_all(conn: &Connection) -> Result<Vec<User>, UserError> {
+        Ok(conn
             .prepare("SELECT id, handle FROM users")?
             .query_map((), |r| {
                 Ok(User {
@@ -92,16 +90,18 @@ impl User {
             .collect::<Result<Vec<User>, _>>()?)
     }
 
-    pub fn create(handle: UserHandle) -> Result<User, UserError> {
-        let conn = database::conn()?;
+    pub fn create(conn: &Connection, handle: UserHandle) -> Result<User, UserError> {
         let id = Uuid::now_v7();
         conn.prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
             .execute((&id, &handle))?;
         Ok(User { id, handle })
     }
 
-    pub fn set_handle(&mut self, new_handle: UserHandle) -> Result<(), UserError> {
-        let conn = database::conn()?;
+    pub fn set_handle(
+        &mut self,
+        conn: &Connection,
+        new_handle: UserHandle,
+    ) -> Result<(), UserError> {
         conn.prepare("UPDATE users SET handle = ?1 WHERE id = ?2")?
             .execute((&new_handle, self.id))?;
         self.handle = new_handle;
@@ -118,8 +118,11 @@ impl User {
 
 // DANGEROUS: AUTH
 impl User {
-    pub fn set_password(&mut self, passw: Option<&str>) -> Result<(), UserError> {
-        let conn = database::conn()?;
+    pub fn set_password(
+        &mut self,
+        conn: &Connection,
+        passw: Option<&str>,
+    ) -> Result<(), UserError> {
         match passw {
             None => {
                 conn.prepare("UPDATE users SET password = NULL WHERE id = ?1")?
@@ -145,15 +148,14 @@ impl User {
     /// to do everything and probably should not be used as a regular account
     /// due to the ramifications of compromise. But it could be used for that,
     /// and have its name changed.
-    pub fn create_infradmin() -> Result<User, UserError> {
+    pub fn create_infradmin(conn: &Connection) -> Result<User, UserError> {
         let mut u = User {
             id: Uuid::max(),
             handle: UserHandle::new("Infradmin")?,
         };
-        database::conn()?
-            .prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
+        conn.prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
             .execute((&u.id, &u.handle))?;
-        u.regenerate_infradmin_password()?;
+        u.regenerate_infradmin_password(conn)?;
 
         Ok(u)
     }
@@ -176,9 +178,9 @@ impl User {
     /// to do everything and probably should not be used as a regular account
     /// due to the ramifications of compromise. But it could be used for that,
     /// and have its name changed.
-    pub fn regenerate_infradmin_password(&mut self) -> Result<(), UserError> {
+    pub fn regenerate_infradmin_password(&mut self, conn: &Connection) -> Result<(), UserError> {
         let passw = auth::generate_token(auth::TokenSize::Char16);
-        self.set_password(Some(&passw))?;
+        self.set_password(conn, Some(&passw))?;
         log::info!("[USERS] The infradmin account password has been (re)generated.");
         log::info!("[USERS] Handle: {}", self.handle.as_str());
         log::info!("[USERS] Password: {}", passw);
@@ -192,13 +194,12 @@ impl User {
     /// for actions performed by Mnemosyne internally.
     /// It shall not be available for log-in.
     /// It should not have its name changed, and should be protected from that.
-    pub fn create_systemuser() -> Result<User, UserError> {
+    pub fn create_systemuser(conn: &Connection) -> Result<User, UserError> {
         let u = User {
             id: Uuid::nil(),
             handle: UserHandle::new("Mnemosyne")?,
         };
-        database::conn()?
-            .prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
+        conn.prepare("INSERT INTO users(id, handle) VALUES (?1, ?2)")?
             .execute((&u.id, &u.handle))?;
 
         Ok(u)
