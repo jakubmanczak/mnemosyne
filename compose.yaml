@@ -10,11 +10,17 @@ services:
     volumes:
       # Mnemosyne would greatly enjoy not having an ephemeral database.
       # If you're okay with storing it side by side with the compose file,
-      # this is one way to do it. Another is to use a docker volume.
+      # a bind mount like this is one way to do it. Remember to mkdir!
       - ./mnemodata:/app/data
+      # Another way is to use a docker volume.
+      # - mnemodata:/app/data
     environment:
       # DATABASE_URL is crucial for Mnemosyne to work; it will fail without it.
-      # point it at where you'd like your database to be.
+      # Point it at where you'd like your database to be.
       - DATABASE_URL=/app/data/db.db
       # Mnemosyne uses port 39321 for HTTP by default;
       # - PORT=39321
+
+# Declaring a volume for the docker volume example.
+# volumes:
+#   mnemodata:

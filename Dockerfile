@@ -53,7 +53,7 @@ RUN adduser \
     --uid "${UID}" \
     appuser
 
-RUN mkdir -p /app && chown appuser:appuser /app
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
 USER appuser
 WORKDIR /app
 ENV IN_DOCKER=true
