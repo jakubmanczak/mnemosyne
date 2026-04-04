@@ -10,7 +10,8 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
-    database,
+    database::{self, DatabaseError},
+    logs::{LogAction, LogEntry},
     persons::Name,
     quotes::Quote,
     users::{
@@ -48,16 +49,17 @@ pub async fn create(
     Json(form): Json<QuoteCreateForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
 
     let lines = form
         .lines
         .into_iter()
-        .map(|l| Ok((l.content, Name::get_by_id(&conn, l.name_id)?)))
+        .map(|l| Ok((l.content, Name::get_by_id(&tx, l.name_id)?)))
         .collect::<Result<Vec<(String, Name)>, CompositeError>>()?;
 
     let q = Quote::create(
-        &conn,
+        &tx,
         lines,
         form.timestamp,
         form.context,
@@ -66,5 +68,7 @@ pub async fn create(
         form.public,
     )?;
 
+    LogEntry::new(&tx, u, LogAction::CreateQuote { id: q.id })?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok((StatusCode::CREATED, Json(q)).into_response())
 }

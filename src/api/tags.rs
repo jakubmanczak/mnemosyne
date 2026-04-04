@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
-    database,
+    database::{self, DatabaseError},
+    logs::{LogAction, LogEntry},
     tags::{Tag, TagName},
     users::{
         User,
@@ -56,11 +57,24 @@ pub async fn create(
     Json(form): Json<TagNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    if !u.has_permission(&conn, Permission::CreateTags)? {
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    if !u.has_permission(&tx, Permission::CreateTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_MAKE_TAGS).into_response());
     }
-    Ok(Json(Tag::create(&conn, form.name)?).into_response())
+
+    let t = Tag::create(&tx, form.name)?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::CreateTag {
+            id: t.id,
+            name: t.name.as_str().to_string(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
+    Ok(Json(t).into_response())
 }
 
 pub async fn rename(
@@ -69,21 +83,42 @@ pub async fn rename(
     Json(form): Json<TagNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    if !u.has_permission(&conn, Permission::RenameTags)? {
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    if !u.has_permission(&tx, Permission::RenameTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_RENAME_TAGS).into_response());
     }
-    let mut tag = Tag::get_by_id(&conn, id)?;
-    tag.rename(&conn, form.name)?;
+    let mut tag = Tag::get_by_id(&tx, id)?;
+    let on = tag.name.as_str().to_string();
+    tag.rename(&tx, form.name)?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::RenameTag {
+            id,
+            on,
+            nn: tag.name.as_str().to_string(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
+
     Ok(Json(tag).into_response())
 }
 
 pub async fn delete(Path(id): Path<Uuid>, headers: HeaderMap) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    if !u.has_permission(&conn, Permission::DeleteTags)? {
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    if !u.has_permission(&tx, Permission::DeleteTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_DEL_TAGS).into_response());
     }
-    Tag::get_by_id(&conn, id)?.delete(&conn)?;
+    let t = Tag::get_by_id(&tx, id)?;
+    let name = t.name.as_str().to_string();
+    t.delete(&tx)?;
+    LogEntry::new(&tx, u, LogAction::DeleteTag { id, name })?;
+    tx.commit().map_err(DatabaseError::from)?;
+
     Ok((StatusCode::OK, TAG_DELETED).into_response())
 }

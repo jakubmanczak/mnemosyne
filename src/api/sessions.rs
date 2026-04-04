@@ -8,7 +8,8 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
-    database,
+    database::{self, DatabaseError},
+    logs::{LogAction, LogEntry},
     users::{
         User,
         auth::{UserAuthRequired, UserAuthenticate},
@@ -17,7 +18,7 @@ use crate::{
     },
 };
 
-const CANT_REVOKE: &str = "You don't have permission to change this user's password.";
+const CANT_REVOKE: &str = "You don't have permission to revoke this user's sessions.";
 
 pub async fn get_by_id(
     Path(id): Path<Uuid>,
@@ -41,18 +42,21 @@ pub async fn revoke_by_id(
     headers: HeaderMap,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    let mut s = Session::get_by_id(&conn, id)?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
 
+    let mut s = Session::get_by_id(&tx, id)?;
     match s.user_id == u.id
-        || u.has_permission(&conn, Permission::RevokeOthersSessions)
+        || u.has_permission(&tx, Permission::RevokeOthersSessions)
             .is_ok_and(|v| v)
     {
         true => {
-            s.revoke(&conn, Some(&u))?;
+            s.revoke(&tx, Some(&u))?;
+            LogEntry::new(&tx, u, LogAction::ManuallyRevokeSession { id })?;
+            tx.commit().map_err(DatabaseError::from)?;
             Ok(Json(s).into_response())
         }
-        false => match u.has_permission(&conn, Permission::ListOthersSessions)? {
+        false => match u.has_permission(&tx, Permission::ListOthersSessions)? {
             true => Ok((StatusCode::FORBIDDEN, CANT_REVOKE).into_response()),
             false => Err(SessionError::NoSessionWithId(id))?,
         },

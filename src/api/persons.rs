@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
-    database,
+    database::{self, DatabaseError},
+    logs::{LogAction, LogEntry},
     persons::{Name, Person},
     users::{
         User,
@@ -52,8 +53,19 @@ pub async fn create(
     Json(form): Json<PersonNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    let p = Person::create(&conn, form.name, u.id)?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    let p = Person::create(&tx, form.name, u.id)?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::CreatePerson {
+            id: p.id,
+            pname: p.primary_name.as_str().to_string(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok((StatusCode::CREATED, Json(p)).into_response())
 }
 pub async fn add_name(
@@ -62,10 +74,22 @@ pub async fn add_name(
     Json(form): Json<PersonNameForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    let p = Person::get_by_id(&conn, id)?;
-    let n = p.add_name(&conn, form.name, u.id)?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
 
+    let p = Person::get_by_id(&tx, id)?;
+    let n = p.add_name(&tx, form.name, u.id)?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::AddPersonName {
+            pid: p.id,
+            nid: n.id,
+            pn: p.primary_name,
+            nn: n.name.clone(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok((StatusCode::CREATED, Json(n)).into_response())
 }
 
@@ -79,13 +103,28 @@ pub async fn n_setprimary(
     headers: HeaderMap,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    if !u.has_permission(&conn, Permission::ChangePersonPrimaryName)? {
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    if !u.has_permission(&tx, Permission::ChangePersonPrimaryName)? {
         return Ok((StatusCode::FORBIDDEN, CANT_SET_PRIMARYNAME).into_response());
     }
 
-    let mut n = Name::get_by_id(&conn, id)?;
-    n.set_primary(&conn)?;
+    let mut n = Name::get_by_id(&tx, id)?;
+    let p = Person::get_by_id(&tx, n.person_id)?;
+    n.set_primary(&tx)?;
     n.is_primary = true;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::SetPersonPrimaryName {
+            pid: p.id,
+            nid: n.id,
+            on: p.primary_name,
+            nn: n.name.clone(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
+
     Ok(Json(n).into_response())
 }

@@ -96,6 +96,7 @@ pub async fn change_handle(
             new: u.handle.as_str().to_string(),
         },
     )?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok(Redirect::to("/user-settings").into_response())
 }
 
@@ -110,7 +111,7 @@ pub async fn change_password(
     let mut u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
     let tx = conn.transaction().map_err(DatabaseError::from)?;
-
     u.set_password(&tx, Some(&form.password))?;
+    tx.commit().map_err(DatabaseError::from)?;
     Ok(Redirect::to("/user-settings").into_response())
 }

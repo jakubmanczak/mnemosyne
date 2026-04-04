@@ -9,7 +9,8 @@ use uuid::Uuid;
 
 use crate::{
     api::CompositeError,
-    database,
+    database::{self, DatabaseError},
+    logs::{LogAction, LogEntry},
     users::{
         User,
         auth::{UserAuthRequired, UserAuthenticate},
@@ -61,11 +62,25 @@ pub async fn create(
     Json(form): Json<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
-    if !u.has_permission(&conn, Permission::ManuallyCreateUsers)? {
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
+    if !u.has_permission(&tx, Permission::ManuallyCreateUsers)? {
         return Ok((StatusCode::FORBIDDEN, CANT_MANUALLY_MAKE_USERS).into_response());
     }
-    Ok(Json(User::create(&conn, form.handle)?).into_response())
+
+    let nu = User::create(&tx, form.handle)?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::CreateUser {
+            id: nu.id,
+            handle: nu.handle.as_str().to_string(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
+
+    Ok(Json(nu).into_response())
 }
 pub async fn change_handle(
     Path(id): Path<Uuid>,
@@ -73,17 +88,31 @@ pub async fn change_handle(
     Json(form): Json<HandleForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
 
     let mut target = if u.id == id {
-        u
+        u.clone()
     } else {
-        if !u.has_permission(&conn, Permission::ChangeOthersHandles)? {
+        if !u.has_permission(&tx, Permission::ChangeOthersHandles)? {
             return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_HANDLE).into_response());
         }
-        User::get_by_id(&conn, id)?
+        User::get_by_id(&tx, id)?
     };
-    target.set_handle(&conn, form.handle)?;
+
+    let old_handle = target.handle.as_str().to_string();
+    target.set_handle(&tx, form.handle)?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::ChangeUserHandle {
+            id: target.id,
+            old: old_handle,
+            new: target.handle.as_str().to_string(),
+        },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
+
     Ok(HANDLE_CHANGED_SUCCESS.into_response())
 }
 
@@ -97,15 +126,25 @@ pub async fn change_password(
     Json(form): Json<ChangePasswordForm>,
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
-    let conn = database::conn()?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction().map_err(DatabaseError::from)?;
+
     let mut target = if u.id == id {
-        u
+        u.clone()
     } else {
-        if !u.has_permission(&conn, Permission::ChangeOthersPasswords)? {
+        if !u.has_permission(&tx, Permission::ChangeOthersPasswords)? {
             return Ok((StatusCode::FORBIDDEN, CANT_CHANGE_OTHERS_PASSW).into_response());
         }
-        User::get_by_id(&conn, id)?
+        User::get_by_id(&tx, id)?
     };
-    target.set_password(&conn, Some(&form.password))?;
+
+    target.set_password(&tx, Some(&form.password))?;
+    LogEntry::new(
+        &tx,
+        u,
+        LogAction::ManuallyChangeUsersPassword { id: target.id },
+    )?;
+    tx.commit().map_err(DatabaseError::from)?;
+
     Ok(PASSW_CHANGED_SUCCESS.into_response())
 }

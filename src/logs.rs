@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;
@@ -55,10 +57,53 @@ impl LogEntry {
 pub enum LogAction {
     Initialize,
     RegenInfradmin,
-    CreateUser { id: Uuid, handle: String },
-    CreateTag { id: Uuid, name: String },
-    CreatePerson { id: Uuid, pname: String },
-    ChangeUserHandle { id: Uuid, old: String, new: String },
+    CreateUser {
+        id: Uuid,
+        handle: String,
+    },
+    ManuallyChangeUsersPassword {
+        id: Uuid,
+    },
+    CreateTag {
+        id: Uuid,
+        name: String,
+    },
+    RenameTag {
+        id: Uuid,
+        on: String,
+        nn: String,
+    },
+    DeleteTag {
+        id: Uuid,
+        name: String,
+    },
+    CreatePerson {
+        id: Uuid,
+        pname: String,
+    },
+    ChangeUserHandle {
+        id: Uuid,
+        old: String,
+        new: String,
+    },
+    AddPersonName {
+        pid: Uuid,  // person id
+        nid: Uuid,  // name id
+        pn: String, // primary name
+        nn: String, // new name
+    },
+    SetPersonPrimaryName {
+        pid: Uuid,  // person id
+        nid: Uuid,  // name id
+        on: String, // old name
+        nn: String, // new name
+    },
+    CreateQuote {
+        id: Uuid,
+    },
+    ManuallyRevokeSession {
+        id: Uuid,
+    },
 }
 impl LogAction {
     pub fn get_target_id(&self) -> Option<Uuid> {
@@ -67,7 +112,13 @@ impl LogAction {
             Self::CreateUser { id, .. }
             | Self::CreateTag { id, .. }
             | Self::CreatePerson { id, .. }
-            | Self::ChangeUserHandle { id, .. } => Some(*id),
+            | Self::ChangeUserHandle { id, .. }
+            | Self::CreateQuote { id }
+            | Self::ManuallyRevokeSession { id }
+            | Self::RenameTag { id, .. }
+            | Self::DeleteTag { id, .. }
+            | Self::ManuallyChangeUsersPassword { id } => Some(*id),
+            Self::AddPersonName { pid, .. } | Self::SetPersonPrimaryName { pid, .. } => Some(*pid),
         }
     }
     pub fn get_humanreadable_payload(&self) -> String {
@@ -77,14 +128,35 @@ impl LogAction {
             LogAction::CreateUser { id, handle } => {
                 format!("Created user @{handle} (uid: {id})")
             }
+            LogAction::ManuallyChangeUsersPassword { id } => {
+                format!("Manually changed password of user with id: {id}")
+            }
             LogAction::CreateTag { id, name } => {
                 format!("Created tag #{name} (id: {id})")
+            }
+            LogAction::RenameTag { id, on, nn } => {
+                format!("Renamed tag #{on} -> #{nn} (id: {id})")
+            }
+            LogAction::DeleteTag { id, name } => {
+                format!("Deleted tag #{name} (id: {id})")
             }
             LogAction::CreatePerson { id, pname } => {
                 format!("Created person ~{pname} (id: {id})")
             }
             LogAction::ChangeUserHandle { id, old, new } => {
                 format!("Changed user handle @{old} -> @{new} (uid: {id})")
+            }
+            LogAction::AddPersonName { pid, nid, pn, nn } => {
+                format!("Added name \"{nn}\" to ~{pn} (pid: {pid}; nid: {nid})")
+            }
+            LogAction::SetPersonPrimaryName { pid, nid, on, nn } => {
+                format!("~{on} now has primary name \"{nn}\" (pid: {pid}; nid: {nid})")
+            }
+            LogAction::CreateQuote { id } => {
+                format!("Created quote of ID {id}")
+            }
+            LogAction::ManuallyRevokeSession { id } => {
+                format!("Revoked session of ID {id}")
             }
         }
     }
