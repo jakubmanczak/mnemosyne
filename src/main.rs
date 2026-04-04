@@ -6,6 +6,7 @@ use tokio::net::TcpListener;
 mod api;
 mod config;
 mod database;
+mod error;
 mod logs;
 mod persons;
 mod quotes;

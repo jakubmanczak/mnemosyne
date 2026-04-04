@@ -8,8 +8,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     tags::{Tag, TagName},
     users::{
@@ -58,7 +58,7 @@ pub async fn create(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     if !u.has_permission(&tx, Permission::CreateTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_MAKE_TAGS).into_response());
@@ -73,7 +73,7 @@ pub async fn create(
             name: t.name.as_str().to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok(Json(t).into_response())
 }
 
@@ -84,7 +84,7 @@ pub async fn rename(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     if !u.has_permission(&tx, Permission::RenameTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_RENAME_TAGS).into_response());
@@ -101,7 +101,7 @@ pub async fn rename(
             nn: tag.name.as_str().to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
 
     Ok(Json(tag).into_response())
 }
@@ -109,7 +109,7 @@ pub async fn rename(
 pub async fn delete(Path(id): Path<Uuid>, headers: HeaderMap) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     if !u.has_permission(&tx, Permission::DeleteTags)? {
         return Ok((StatusCode::FORBIDDEN, CANT_DEL_TAGS).into_response());
@@ -118,7 +118,7 @@ pub async fn delete(Path(id): Path<Uuid>, headers: HeaderMap) -> Result<Response
     let name = t.name.as_str().to_string();
     t.delete(&tx)?;
     LogEntry::new(&tx, u, LogAction::DeleteTag { id, name })?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
 
     Ok((StatusCode::OK, TAG_DELETED).into_response())
 }

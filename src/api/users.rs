@@ -8,8 +8,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     users::{
         User,
@@ -63,7 +63,7 @@ pub async fn create(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     if !u.has_permission(&tx, Permission::ManuallyCreateUsers)? {
         return Ok((StatusCode::FORBIDDEN, CANT_MANUALLY_MAKE_USERS).into_response());
@@ -78,7 +78,7 @@ pub async fn create(
             handle: nu.handle.as_str().to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
 
     Ok(Json(nu).into_response())
 }
@@ -89,7 +89,7 @@ pub async fn change_handle(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let mut target = if u.id == id {
         u.clone()
@@ -111,7 +111,7 @@ pub async fn change_handle(
             new: target.handle.as_str().to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
 
     Ok(HANDLE_CHANGED_SUCCESS.into_response())
 }
@@ -127,7 +127,7 @@ pub async fn change_password(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let mut target = if u.id == id {
         u.clone()
@@ -144,7 +144,7 @@ pub async fn change_password(
         u,
         LogAction::ManuallyChangeUsersPassword { id: target.id },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
 
     Ok(PASSW_CHANGED_SUCCESS.into_response())
 }

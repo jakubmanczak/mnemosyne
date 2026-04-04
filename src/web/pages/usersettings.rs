@@ -8,8 +8,8 @@ use maud::{PreEscaped, html};
 use serde::Deserialize;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     users::{
         User,
@@ -83,7 +83,7 @@ pub async fn change_handle(
 ) -> Result<Response, CompositeError> {
     let mut u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let oldhandle = u.handle.as_str().to_string();
     u.set_handle(&tx, form.handle)?;
@@ -96,7 +96,7 @@ pub async fn change_handle(
             new: u.handle.as_str().to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok(Redirect::to("/user-settings").into_response())
 }
 
@@ -110,8 +110,8 @@ pub async fn change_password(
 ) -> Result<Response, CompositeError> {
     let mut u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
     u.set_password(&tx, Some(&form.password))?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok(Redirect::to("/user-settings").into_response())
 }

@@ -8,8 +8,8 @@ use maud::{PreEscaped, html};
 use serde::Deserialize;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     tags::{Tag, TagName},
     users::{
@@ -99,7 +99,7 @@ pub async fn create(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let t = Tag::create(&tx, form.tagname)?;
     LogEntry::new(
@@ -110,6 +110,6 @@ pub async fn create(
             name: t.name.to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok(Redirect::to("/tags").into_response())
 }

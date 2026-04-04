@@ -8,8 +8,8 @@ use maud::{PreEscaped, html};
 use serde::Deserialize;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     persons::Person,
     users::{
@@ -100,7 +100,7 @@ pub async fn create(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let p = Person::create(&tx, form.primary_name, u.id)?;
     LogEntry::new(
@@ -111,6 +111,6 @@ pub async fn create(
             pname: p.primary_name,
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok(Redirect::to("/persons").into_response())
 }

@@ -7,8 +7,8 @@ use axum::{
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     users::{
         User,
@@ -43,7 +43,7 @@ pub async fn revoke_by_id(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let mut s = Session::get_by_id(&tx, id)?;
     match s.user_id == u.id
@@ -53,7 +53,7 @@ pub async fn revoke_by_id(
         true => {
             s.revoke(&tx, Some(&u))?;
             LogEntry::new(&tx, u, LogAction::ManuallyRevokeSession { id })?;
-            tx.commit().map_err(DatabaseError::from)?;
+            tx.commit()?;
             Ok(Json(s).into_response())
         }
         false => match u.has_permission(&tx, Permission::ListOthersSessions)? {

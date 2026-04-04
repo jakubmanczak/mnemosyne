@@ -9,8 +9,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     persons::Name,
     quotes::Quote,
@@ -50,7 +50,7 @@ pub async fn create(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let lines = form
         .lines
@@ -69,6 +69,6 @@ pub async fn create(
     )?;
 
     LogEntry::new(&tx, u, LogAction::CreateQuote { id: q.id })?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok((StatusCode::CREATED, Json(q)).into_response())
 }

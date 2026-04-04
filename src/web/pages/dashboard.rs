@@ -4,8 +4,8 @@ use maud::{Markup, PreEscaped, html};
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     persons::{Name, Person},
     quotes::{Quote, QuoteLine},
     tags::Tag,
@@ -25,7 +25,7 @@ const LINKS: &[(&str, &str, &str)] = &[
 pub async fn page(req: Request) -> Result<Markup, CompositeError> {
     let u = User::authenticate(req.headers()).ok().flatten();
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     Ok(base(
         "Dashboard | Mnemosyne",

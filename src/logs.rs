@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use strum::IntoStaticStr;

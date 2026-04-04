@@ -5,8 +5,8 @@ use axum::{
 use maud::{PreEscaped, html};
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::LogEntry,
     users::{User, auth::UserAuthenticate, permissions::Permission},
     web::{RedirectViaError, components::nav::nav, icons, pages::base},
@@ -16,7 +16,7 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let u = User::authenticate(req.headers())?
         .ok_or(RedirectViaError(Redirect::to("/login?re=/logs")))?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
     let logs = LogEntry::get_all(&tx)?;
 
     Ok(base(

@@ -7,8 +7,8 @@ use maud::{PreEscaped, html};
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     persons::Name,
     quotes::{Quote, QuoteLine},
     users::{User, UserError, auth::UserAuthenticate},
@@ -24,8 +24,8 @@ pub async fn page(Path(id): Path<Uuid>, req: Request) -> Result<Response, Compos
         Some(u) => u,
         None => return Ok(Redirect::to("/users").into_response()),
     };
-    let mut conn = database::conn().map_err(DatabaseError::from)?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction()?;
 
     let user = match User::get_by_id(&tx, id) {
         Ok(u) => u,

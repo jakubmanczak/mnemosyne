@@ -8,8 +8,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::{
-    api::CompositeError,
-    database::{self, DatabaseError},
+    database::{self},
+    error::CompositeError,
     logs::{LogAction, LogEntry},
     persons::{Name, Person},
     users::{
@@ -54,7 +54,7 @@ pub async fn create(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let p = Person::create(&tx, form.name, u.id)?;
     LogEntry::new(
@@ -65,7 +65,7 @@ pub async fn create(
             pname: p.primary_name.as_str().to_string(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok((StatusCode::CREATED, Json(p)).into_response())
 }
 pub async fn add_name(
@@ -75,7 +75,7 @@ pub async fn add_name(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     let p = Person::get_by_id(&tx, id)?;
     let n = p.add_name(&tx, form.name, u.id)?;
@@ -89,7 +89,7 @@ pub async fn add_name(
             nn: n.name.clone(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
     Ok((StatusCode::CREATED, Json(n)).into_response())
 }
 
@@ -104,7 +104,7 @@ pub async fn n_setprimary(
 ) -> Result<Response, CompositeError> {
     let u = User::authenticate(&headers)?.required()?;
     let mut conn = database::conn()?;
-    let tx = conn.transaction().map_err(DatabaseError::from)?;
+    let tx = conn.transaction()?;
 
     if !u.has_permission(&tx, Permission::ChangePersonPrimaryName)? {
         return Ok((StatusCode::FORBIDDEN, CANT_SET_PRIMARYNAME).into_response());
@@ -124,7 +124,7 @@ pub async fn n_setprimary(
             nn: n.name.clone(),
         },
     )?;
-    tx.commit().map_err(DatabaseError::from)?;
+    tx.commit()?;
 
     Ok(Json(n).into_response())
 }
