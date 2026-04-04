@@ -28,3 +28,4 @@ README.md
 readme
 **/*.db*
 **/*.db3*
+/mnemodata

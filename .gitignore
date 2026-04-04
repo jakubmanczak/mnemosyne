@@ -1,6 +1,7 @@
 /target
 .DS_Store
 /database
+/mnemodata
 *.db
 *.db-shm
 *.db-wal

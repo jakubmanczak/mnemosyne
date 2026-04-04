@@ -1,16 +1,22 @@
 use axum::{
     Router,
+    http::header,
     response::{IntoResponse, Redirect, Response},
+    routing::get,
 };
-use tower_http::services::ServeFile;
 
 mod components;
 mod icons;
 mod pages;
 
+pub const STYLES_CSS: &str = include_str!("./styles.css");
+
 pub fn web_router() -> Router {
     Router::new()
-        .route_service("/styles.css", ServeFile::new("src/web/styles.css"))
+        .route(
+            "/styles.css",
+            get(|| async { ([(header::CONTENT_TYPE, "text/css")], STYLES_CSS) }),
+        )
         .merge(pages::pages())
 }
 
