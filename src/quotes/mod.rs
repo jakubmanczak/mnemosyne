@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, response::IntoResponse};
-use chrono::{DateTime, FixedOffset};
+use chrono::{DateTime, FixedOffset, Utc};
 use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 use uuid::Uuid;
@@ -32,6 +32,15 @@ pub enum QuoteError {
     EmptyQuote,
     #[error("{0}")]
     DatabaseError(#[from] DatabaseError),
+}
+
+impl Quote {
+    pub fn get_creation_timestamp(&self) -> DateTime<Utc> {
+        // unwrap here because all IDs use UUIDv7
+        let (s, n) = self.id.get_timestamp().unwrap().to_unix();
+        // unwrap here because timestamps held by UUIDs are valid by spec
+        DateTime::from_timestamp(s as i64, n).unwrap()
+    }
 }
 
 impl Quote {
@@ -91,6 +100,18 @@ impl Quote {
             created_by,
             public,
         })
+    }
+    pub fn get_newest(conn: &Connection) -> Result<Option<Quote>, QuoteError> {
+        let id: Option<Uuid> = conn
+            .query_row("SELECT id FROM quotes ORDER BY id DESC LIMIT 1", (), |r| {
+                r.get(0)
+            })
+            .optional()?;
+
+        match id {
+            Some(id) => Ok(Some(Self::get_by_id(conn, id)?)),
+            None => Ok(None),
+        }
     }
     pub fn create(
         conn: &Connection,

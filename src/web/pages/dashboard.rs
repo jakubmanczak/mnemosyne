@@ -24,8 +24,9 @@ const LINKS: &[(&str, &str, &str)] = &[
 
 pub async fn page(req: Request) -> Result<Markup, CompositeError> {
     let u = User::authenticate(req.headers()).ok().flatten();
-    let mut conn = database::conn()?;
-    let tx = conn.transaction()?;
+    let conn = database::conn()?;
+
+    let newest_quote = Quote::get_newest(&conn)?;
 
     Ok(base(
         "Dashboard | Mnemosyne",
@@ -35,8 +36,15 @@ pub async fn page(req: Request) -> Result<Markup, CompositeError> {
             div class="mx-auto max-w-4xl mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4" {
                 div class="flex flex-col" {
                     p {"Newest Quote"}
-                    p class="text-neutral-500 font-light mb-4" {"This just in! This quote was added 15s ago."}
-                    div class="flex-1 [&>div]:h-full" {(quote(&sample_quote_1()))}
+                    @if let Some(q) = newest_quote {
+                        p class="text-neutral-500 font-light mb-4" {
+                            "This just in! This quote was added "
+                            (format_time_ago(q.get_creation_timestamp())) " ago."
+                        }
+                        div class="flex-1 [&>div]:h-full" {(quote(&q))}
+                    } @else {
+                        p class="text-neutral-500 font-light mb-4" {"No quotes yet."}
+                    }
                 }
                 div class="flex flex-col" {
                     p {"Quote of the Day"}
@@ -60,25 +68,25 @@ pub async fn page(req: Request) -> Result<Markup, CompositeError> {
             }
             div class="mx-auto max-w-4xl mt-4 flex flex-row gap-2" {
                 (chip(html!({
-                    @match Quote::total_count(&tx) {
+                    @match Quote::total_count(&conn) {
                         Ok(count) => {(count) " QUOTES TOTAL"},
                         Err(_) => span class="text-red-400" {"QUOTE COUNT ERR"},
                     }
                 })))
                 (chip(html!({
-                    @match Person::total_count(&tx) {
+                    @match Person::total_count(&conn) {
                         Ok(count) => {(count) " PERSONS TOTAL"},
                         Err(_) => span class="text-red-400" {"PERSON COUNT ERR"},
                     }
                 })))
                 (chip(html!({
-                    @match Tag::total_count(&tx) {
+                    @match Tag::total_count(&conn) {
                         Ok(count) => {(count) " TAGS TOTAL"},
                         Err(_) => span class="text-red-400" {"TAG COUNT ERR"}
                     }
                 })))
                 (chip(html!({
-                    @match User::total_count(&tx) {
+                    @match User::total_count(&conn) {
                         Ok(count) => {(count) " USERS TOTAL"},
                         Err(_) => span class="text-red-400" {"USER COUNT ERR"}
                     }
@@ -88,41 +96,6 @@ pub async fn page(req: Request) -> Result<Markup, CompositeError> {
             div class="text-4xl xs:text-6xl sm:text-8xl text-neutral-800/25 mt-16 text-center font-semibold font-lora select-none" {"Mnemosyne"}
         ),
     ))
-}
-
-fn sample_quote_1() -> Quote {
-    Quote {
-        id: Uuid::now_v7(),
-        public: true,
-        location: Some(String::from("Poznań")),
-        context: Some(String::from("Wykład z językoznawstwa")),
-        created_by: Uuid::max(),
-        timestamp: DateTime::from(Utc::now()),
-        lines: vec![
-            QuoteLine {
-                id: Uuid::now_v7(),
-                content: String::from("Nie wiem, czy są tutaj osoby fanowskie zipline-ów?"),
-                attribution: Name {
-                    id: Uuid::nil(),
-                    created_by: Uuid::max(),
-                    person_id: Uuid::now_v7(),
-                    is_primary: true,
-                    name: String::from("dr. Barbara Konat"),
-                },
-            },
-            QuoteLine {
-                id: Uuid::now_v7(),
-                content: String::from("Taka uprząż co robi pziuuum!"),
-                attribution: Name {
-                    id: Uuid::nil(),
-                    created_by: Uuid::max(),
-                    person_id: Uuid::now_v7(),
-                    is_primary: true,
-                    name: String::from("dr. Barbara Konat"),
-                },
-            },
-        ],
-    }
 }
 
 fn sample_quote_2() -> Quote {
@@ -157,5 +130,15 @@ fn sample_quote_2() -> Quote {
                 },
             },
         ],
+    }
+}
+
+fn format_time_ago(dt: DateTime<Utc>) -> String {
+    let secs = Utc::now().signed_duration_since(dt).num_seconds();
+    match secs {
+        ..60 => format!("{}s", secs),
+        60..3600 => format!("{}m", secs / 60),
+        3600..86400 => format!("{}h", secs / 3600),
+        _ => format!("{}d", secs / 86400),
     }
 }
