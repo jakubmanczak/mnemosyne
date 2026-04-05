@@ -11,6 +11,7 @@ pub const LAYOUT_DASHBOARD: &str = include_str!("layout-dashboard.svg");
 pub const LOG_OUT: &str = include_str!("log-out.svg");
 pub const MAP_PIN: &str = include_str!("map-pin.svg");
 pub const PEN: &str = include_str!("pen.svg");
+pub const PLUS: &str = include_str!("plus.svg");
 pub const QUOTE: &str = include_str!("quote.svg");
 pub const SCROLL_TEXT: &str = include_str!("scroll-text.svg");
 pub const SERVER: &str = include_str!("server.svg");

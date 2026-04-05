@@ -5,7 +5,7 @@ use crate::{users::User, web::icons};
 // (SHOWTEXT, LINK, ICON, REQUIRES_LOG_IN)
 const LINKS: &[(&str, &str, &str, bool)] = &[
     ("Dashboard", "/dashboard", icons::LAYOUT_DASHBOARD, false),
-    ("Quotes", "#quotes", icons::SCROLL_TEXT, false),
+    ("Quotes", "/quotes", icons::SCROLL_TEXT, false),
     ("Photos", "#photos", icons::FILE_IMAGE, false),
     ("Persons", "/persons", icons::CONTACT, false),
     ("Tags", "/tags", icons::TAG, false),

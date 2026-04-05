@@ -157,6 +157,20 @@ impl Name {
             None => Err(PersonError::NoNameWithId(id)),
         }
     }
+    pub fn get_all(conn: &Connection) -> Result<Vec<Name>, PersonError> {
+        Ok(conn
+            .prepare("SELECT id, is_primary, person_id, created_by, name FROM names")?
+            .query_map((), |r| {
+                Ok(Name {
+                    id: r.get(0)?,
+                    is_primary: r.get(1)?,
+                    person_id: r.get(2)?,
+                    created_by: r.get(3)?,
+                    name: r.get(4)?,
+                })
+            })?
+            .collect::<Result<Vec<Name>, _>>()?)
+    }
     pub fn set_primary(&mut self, conn: &Connection) -> Result<(), PersonError> {
         if self.is_primary {
             return Err(PersonError::AlreadyPrimary);

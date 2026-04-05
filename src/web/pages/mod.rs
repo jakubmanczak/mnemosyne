@@ -9,6 +9,7 @@ pub mod index;
 pub mod login;
 pub mod logs;
 pub mod persons;
+pub mod quotes;
 pub mod tags;
 pub mod users;
 pub mod usersettings;
@@ -30,6 +31,8 @@ pub fn pages() -> Router {
         .route("/persons", get(persons::page))
         .route("/persons/create", post(persons::create))
         .route("/logs", get(logs::page))
+        .route("/quotes", get(quotes::page))
+        .route("/quotes/add", get(quotes::add::page))
 }
 
 pub fn base(title: &str, inner: Markup) -> Markup {
