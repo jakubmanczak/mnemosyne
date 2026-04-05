@@ -1,14 +1,26 @@
 use axum::{
+    Json,
     extract::Request,
+    http::HeaderMap,
     response::{IntoResponse, Response},
 };
+use axum_extra::extract::Form;
+use chrono::{DateTime, Utc};
+use chrono_tz::Europe::Warsaw;
 use maud::{PreEscaped, html};
+use serde::Deserialize;
+use uuid::Uuid;
 
 use crate::{
     database,
     error::CompositeError,
+    logs::{LogAction, LogEntry},
     persons::Name,
-    users::{User, auth::UserAuthenticate},
+    quotes::Quote,
+    users::{
+        User,
+        auth::{UserAuthRequired, UserAuthenticate},
+    },
     web::{components::nav::nav, icons, pages::base},
 };
 
@@ -29,7 +41,8 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                         span class="text-2xl font-semibold font-lora" {"Quote Maker"}
                     }
                 }
-                div class="border border-neutral-200/25 bg-neutral-200/5 rounded-md p-4 flex flex-col" {
+                form method="post" action="/quotes/add-form"
+                class="border border-neutral-200/25 bg-neutral-200/5 rounded-md p-4 flex flex-col" {
                     @for i in 1..=2 {
                         div class="flex justify-between gap-4" {
                             div class="flex flex-col flex-1" {
@@ -38,10 +51,6 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                                     input type="text" name="quoteline" placeholder="They said..." autocomplete="off"
                                         class="px-2 py-1 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25";
                                 }
-                                // label for=(format!("line-{i}")) class="mb-1" {(format!("Quote Line #{i}"))}
-                                // input type="text" id=(format!("line-{i}")) name=(format!("line-{i}"))
-                                //     placeholder=(format!("They said...")) autocomplete="off"
-                                //     class="px-2 py-1 mb-2 bg-neutral-950/50 rounded border border-neutral-200/25";
                             }
                             div class="flex flex-col" {
                                 label {
@@ -50,18 +59,10 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                                         class="px-2 py-1.5 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25"{
                                             option {"--"}
                                             @for name in &names {
-                                                option {(name.name)}
+                                                option value=(name.id.to_string()) {(name.name)}
                                             }
                                         }
                                 }
-                                // label for=(format!("who-{i}")) class="mb-1" {(format!("Quote Author #{i}"))}
-                                // select id=(format!("line-{i}")) name=(format!("line-{i}")) autocomplete="off"
-                                //     class="px-2 py-1.5 mb-2 bg-neutral-950/50 rounded border border-neutral-200/25" {
-                                //     option {"--"}
-                                //     @for name in &names {
-                                //         option {(name.name)}
-                                //     }
-                                // }
                             }
                         }
                     }
@@ -77,7 +78,9 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                         div class="flex flex-col flex-1" {
                             label class="w-full" {
                                 p class="mb-1" {"Time of utterance"}
-                                input type="text" name="time" autocomplete="off" placeholder="2026-04-05T01:14:05+02:00"
+                                input type="hidden" name="time" id="time_hidden";
+                                input type="datetime-local" autocomplete="off"
+                                    onchange="document.getElementById('time_hidden').value = new Date(this.value).toISOString()"
                                     class="px-2 py-1 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25";
                             }
                         }
@@ -99,4 +102,45 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
         ),
     )
     .into_response())
+}
+
+#[derive(Deserialize, Debug)]
+pub struct IncomingQuote {
+    #[serde(rename = "quoteline")]
+    lines: Vec<String>,
+    #[serde(rename = "quoteauthor")]
+    authors: Vec<Uuid>,
+    location: String,
+    time: String,
+    context: String,
+}
+pub async fn form(
+    headers: HeaderMap,
+    Form(form): Form<IncomingQuote>,
+) -> Result<Response, CompositeError> {
+    let u = User::authenticate(&headers)?.required()?;
+    let mut conn = database::conn()?;
+    let tx = conn.transaction()?;
+
+    let authors = form
+        .authors
+        .into_iter()
+        .map(|nid| Name::get_by_id(&tx, nid).unwrap());
+    let lines = form.lines.into_iter().zip(authors).collect();
+    let timestamp = DateTime::parse_from_rfc3339(&form.time)
+        .unwrap_or_else(|_| Utc::now().with_timezone(&Warsaw).fixed_offset());
+    let context = match form.context.trim() {
+        "" => None,
+        s => Some(s.to_string()),
+    };
+    let location = match form.location.trim() {
+        "" => None,
+        s => Some(s.to_string()),
+    };
+
+    let q = Quote::create(&tx, lines, timestamp, context, location, u.id, false)?;
+    LogEntry::new(&tx, u, LogAction::CreateQuote { id: q.id })?;
+    tx.commit()?;
+
+    Ok(Json(q).into_response())
 }
