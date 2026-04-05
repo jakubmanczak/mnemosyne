@@ -20,7 +20,7 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let logs = LogEntry::get_all(&tx)?;
 
     Ok(base(
-        "Persons | Mnemosyne",
+        "Logs | Mnemosyne",
         html!(
             (nav(Some(&u), req.uri().path()))
 

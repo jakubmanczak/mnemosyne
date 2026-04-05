@@ -18,7 +18,7 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let names = Name::get_all(&conn)?;
 
     Ok(base(
-        "Persons | Mnemosyne",
+        "Add Quote | Mnemosyne",
         html!(
             (nav(u.as_ref(), req.uri().path()))
 

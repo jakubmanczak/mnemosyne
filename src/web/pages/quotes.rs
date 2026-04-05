@@ -16,7 +16,7 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let u = User::authenticate(req.headers())?;
 
     Ok(base(
-        "Persons | Mnemosyne",
+        "Quotes | Mnemosyne",
         html!(
             (nav(u.as_ref(), req.uri().path()))
 

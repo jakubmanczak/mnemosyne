@@ -25,7 +25,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
     let conn = database::conn()?;
 
     Ok(base(
-        "Users | Mnemosyne",
+        "Create User | Mnemosyne",
         html!(
             (nav(u.as_ref(), req.uri().path()))
 

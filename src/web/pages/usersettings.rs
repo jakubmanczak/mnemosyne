@@ -23,7 +23,7 @@ pub async fn page(req: Request) -> Result<Response, AuthError> {
     let u = User::authenticate(req.headers())?;
 
     Ok(base(
-        "Persons | Mnemosyne",
+        "User Settings | Mnemosyne",
         html!(
             (nav(u.as_ref(), req.uri().path()))
 
