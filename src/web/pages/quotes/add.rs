@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use axum_extra::extract::Form;
-use chrono::{DateTime, Utc};
+use chrono::{TimeZone, Utc};
 use chrono_tz::Europe::Warsaw;
 use maud::{PreEscaped, html};
 use serde::Deserialize;
@@ -78,9 +78,9 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                         div class="flex flex-col flex-1" {
                             label class="w-full" {
                                 p class="mb-1" {"Time of utterance"}
-                                input type="hidden" name="time" id="time_hidden";
-                                input type="datetime-local" autocomplete="off"
-                                    onchange="document.getElementById('time_hidden').value = new Date(this.value).toISOString()"
+                                input type="hidden" name="tz_offset" id="tz_offset" value="0";
+                                script { (PreEscaped("document.getElementById('tz_offset').value = new Date().getTimezoneOffset();")) }
+                                input type="datetime-local" name="time" autocomplete="off"
                                     class="px-2 py-1 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25";
                             }
                         }
@@ -112,6 +112,7 @@ pub struct IncomingQuote {
     authors: Vec<Uuid>,
     location: String,
     time: String,
+    tz_offset: Option<i32>,
     context: String,
 }
 pub async fn form(
@@ -127,7 +128,13 @@ pub async fn form(
         .into_iter()
         .map(|nid| Name::get_by_id(&tx, nid).unwrap());
     let lines = form.lines.into_iter().zip(authors).collect();
-    let timestamp = DateTime::parse_from_rfc3339(&form.time)
+    let offset = form
+        .tz_offset
+        .and_then(|mins| chrono::FixedOffset::west_opt(mins * 60))
+        .unwrap_or_else(|| chrono::FixedOffset::west_opt(0).unwrap());
+
+    let timestamp = chrono::NaiveDateTime::parse_from_str(&form.time, "%Y-%m-%dT%H:%M")
+        .map(|ndt| offset.from_local_datetime(&ndt).unwrap())
         .unwrap_or_else(|_| Utc::now().with_timezone(&Warsaw).fixed_offset());
     let context = match form.context.trim() {
         "" => None,
