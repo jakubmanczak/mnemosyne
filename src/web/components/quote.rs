@@ -25,7 +25,7 @@ pub fn quote(quote: &Quote) -> Markup {
                 }
             }
             div class="flex flex-row text-neutral-400 mt-auto pt-4 items-center font-light text-xs" {
-                p {(quote.timestamp.format("%d/%m/%Y %H:%M"))}
+                p {(quote.timestamp.format("%Y-%m-%d %H:%M"))}
                 @if let Some(loc) = &quote.location {
                     span class="ml-3 scale-[.5]"{(PreEscaped(icons::MAP_PIN))} p { (loc) }
                 }
