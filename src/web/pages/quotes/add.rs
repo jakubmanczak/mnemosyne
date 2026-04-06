@@ -1,13 +1,12 @@
 use axum::{
-    Json,
     extract::Request,
     http::HeaderMap,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::Form;
 use chrono::{TimeZone, Utc};
 use chrono_tz::Europe::Warsaw;
-use maud::{PreEscaped, html};
+use maud::{Markup, PreEscaped, html};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -23,6 +22,8 @@ use crate::{
     },
     web::{components::nav::nav, icons, pages::base},
 };
+
+const LINE_ADD_RM_SCRIPT: &str = include_str!("line-add-rm.js");
 
 pub async fn page(req: Request) -> Result<Response, CompositeError> {
     let u = User::authenticate(req.headers())?;
@@ -43,30 +44,20 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
                 }
                 form method="post" action="/quotes/add-form"
                 class="border border-neutral-200/25 bg-neutral-200/5 rounded-md p-4 flex flex-col" {
-                    @for i in 1..=2 {
-                        div class="flex justify-between gap-4" {
-                            div class="flex flex-col flex-1" {
-                                label class="w-full" {
-                                    p class="mb-1" {(format!("Quote Line #{i}"))}
-                                    input type="text" name="quoteline" placeholder="They said..." autocomplete="off"
-                                        class="px-2 py-1 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25";
-                                }
-                            }
-                            div class="flex flex-col" {
-                                label {
-                                    p class="mb-1" {(format!("Quote Author #{i}"))}
-                                    select name="quoteauthor" autocomplete="off"
-                                        class="px-2 py-1.5 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25"{
-                                            option {"--"}
-                                            @for name in &names {
-                                                option value=(name.id.to_string()) {(name.name)}
-                                            }
-                                        }
-                                }
-                            }
+                    div quotelines class="flex flex-col" {
+                        @for i in 1..=3 {(maker_line_row(i==1, &names))}
+                    }
+                    template quotelinetemplate {
+                        (maker_line_row(false, &names))
+                    }
+                    div class="flex flex-row gap-2" {
+                        hr class="border-neutral-200/25 flex-1 my-4";
+                        button addlinebtn type="button"
+                        class="w-fit text-neutral-400 hover:text-neutral-300 cursor-pointer" {
+                            "Add line"
                         }
                     }
-                    hr class="border-neutral-200/25 my-4";
+                    script {(PreEscaped(LINE_ADD_RM_SCRIPT))}
                     div class="flex gap-4 justify-between" {
                         div class="flex flex-col flex-1" {
                             label class="w-full"{
@@ -102,6 +93,35 @@ pub async fn page(req: Request) -> Result<Response, CompositeError> {
         ),
     )
     .into_response())
+}
+
+fn maker_line_row(rm_disabled: bool, names: &[Name]) -> Markup {
+    html!(
+        div quoteline class="flex gap-4" {
+            div class="flex flex-col flex-1" {
+                label class="w-full" {
+                    p class="mb-1" {"Quote line"}
+                    input type="text" name="quoteline" placeholder="They said..." autocomplete="off" required
+                        class="px-2 py-1 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25";
+                }
+            }
+            div class="flex flex-col ml-auto" {
+                label {
+                    p class="mb-1" {"Attribution"}
+                    select name="quoteauthor" autocomplete="off" required
+                        class="px-2 py-1.5 w-full mb-2 bg-neutral-950/50 rounded border border-neutral-200/25"{
+                            option value="" {"--"}
+                            @for name in names {
+                                option value=(name.id.to_string()) {(name.name)}
+                            }
+                        }
+                }
+            }
+            button rmlinebtn disabled?[rm_disabled] type="button" class="h-fit mt-auto mb-2 p-1 bg-neutral-200/5 hover:bg-neutral-200/15 rounded border border-neutral-200/25 hover:border-neutral-200/45 cursor-pointer disabled:cursor-not-allowed disabled:opacity-[.5]" {
+                (PreEscaped(icons::CIRCLE_MINUS))
+            }
+        }
+    )
 }
 
 #[derive(Deserialize, Debug)]
@@ -149,5 +169,5 @@ pub async fn form(
     LogEntry::new(&tx, u, LogAction::CreateQuote { id: q.id })?;
     tx.commit()?;
 
-    Ok(Json(q).into_response())
+    Ok(Redirect::to("/dashboard").into_response())
 }

@@ -1,6 +1,7 @@
 // Below icons sourced from https://lucide.dev
 pub const ARROW_RIGHT: &str = include_str!("arrow-right.svg");
 pub const CALENDAR_1: &str = include_str!("calendar-1.svg");
+pub const CIRCLE_MINUS: &str = include_str!("circle-minus.svg");
 pub const CLIPBOARD_CLOCK: &str = include_str!("clipboard-clock.svg");
 pub const CLOCK: &str = include_str!("clock.svg");
 pub const CONTACT: &str = include_str!("contact.svg");
